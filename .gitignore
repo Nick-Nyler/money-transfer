@@ -1,0 +1,53 @@
+# ==== Python / Flask ====
+# Byte‑compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env
+env/
+.venv/
+
+# Flask instance folder
+instance/
+*.sqlite3
+*.db
+
+# Testing
+.coverage
+.pytest_cache/
+
+# ==== Node / React ====
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/build/
+frontend/dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime env vars
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# ==== Editor / OS ====
+# VSCode
+.vscode/
+
+# JetBrains
+.idea/
+
+# macOS
+.DS_Store
+
+# Others
+*.log
