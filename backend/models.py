@@ -22,3 +22,17 @@ class Wallet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     balance = db.Column(db.Float, default=0.0)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+class Beneficiary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+    account_reference = db.Column(db.String(128), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+class Transaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    from_wallet = db.Column(db.Integer, db.ForeignKey('wallet.id'), nullable=False)
+    to_beneficiary = db.Column(db.Integer, db.ForeignKey('beneficiary.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    timestamp = db.Column(db.DateTime, server_default=db.func.now())
+    fee = db.Column(db.Float, default=0.0)
