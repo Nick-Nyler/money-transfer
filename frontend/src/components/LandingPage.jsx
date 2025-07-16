@@ -73,7 +73,7 @@ const LandingPage = () => {
             <h2>MoneyTransfer</h2>
           </div>
           <div className="nav-actions">
-            <Link to="/login" className="btn btn-outline">
+            <Link to="/login" className="btn btn-outline btn-signin">
               Sign In
             </Link>
             <Link to="/register" className="btn btn-primary">
