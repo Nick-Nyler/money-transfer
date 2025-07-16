@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from models import db, User, Transaction
 from auth import token_required
 
-admin_bp = Blueprint('admin', name)
+admin_bp = Blueprint('admin', __name__)
+
 
 @admin_bp.route('/users', methods=['GET','DELETE'])
 @token_required
