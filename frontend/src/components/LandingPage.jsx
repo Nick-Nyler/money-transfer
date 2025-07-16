@@ -59,7 +59,7 @@ const LandingPage = () => {
 
   const stats = [
     { number: "50K+", label: "Happy Users" },
-    { number: "₹10M+", label: "Transferred Daily" },
+    { number: "KES10M+", label: "Transferred Daily" },
     { number: "99.9%", label: "Uptime" },
     { number: "24/7", label: "Support" },
   ]
