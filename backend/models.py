@@ -18,3 +18,7 @@ def set_password(self, pw):
 
 def check_password(self, pw):
     return check_password_hash(self.password_hash, pw)
+class Wallet(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    balance = db.Column(db.Float, default=0.0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
