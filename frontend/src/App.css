@@ -2228,9 +2228,13 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .hero-visual {
+    height: 560px;
+}
+
   .phone-mockup {
-    width: 240px;
-    height: 480px;
+    width: 280px;
+    height: 560px;
   }
 
   .hero-actions {
@@ -2276,8 +2280,33 @@
     padding: 0 1rem;
   }
 
+  .nav-brand {
+    margin-left: -0.5rem;
+  }
+
+  .nav-brand h2 {
+    font-size: 1.35rem;
+  }
+
+  .nav-actions {
+    display: flex;
+    width: 55%;
+    height: 50px;
+  }
+
+  .nav-actions .btn {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+
   .section-container {
     padding: 0 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
   }
 
   .hero-container {
@@ -2296,16 +2325,70 @@
     font-size: 1rem;
   }
 
+  /* Phone Mockup Responsive Styling */
+  .hero-visual {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
   .phone-mockup {
-    width: 200px;
-    height: 400px;
+    width: 220px;
+    height: 440px;
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .phone-screen {
+    border-radius: 16px;
   }
 
   .app-preview {
     padding: 1rem;
+    gap: 1rem;
+  }
+
+  .wallet-preview {
+    padding: 1rem;
+    border-radius: 10px;
+  }
+
+  .wallet-preview h3 {
+    font-size: 0.75rem;
   }
 
   .balance {
     font-size: 1.5rem;
+  }
+
+  .actions-preview {
+    gap: 0.5rem;
+  }
+
+  .action-btn {
+    font-size: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+  }
+
+  .transactions-preview {
+    gap: 0.5rem;
+  }
+
+  .transaction-item {
+    padding: 0.75rem;
+    border-radius: 6px;
+  }
+
+  .transaction-info div:first-child {
+    font-size: 0.75rem;
+  }
+
+  .amount {
+    font-size: 0.875rem;
+  }
+
+  .btn-outline {
+    color: white;
+    border: 1px solid whitesmoke;
   }
 }
