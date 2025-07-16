@@ -70,6 +70,7 @@ const LandingPage = () => {
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-brand">
+            <img src="/logo.png" alt="MoneyTransfer Logo" className="nav-logo" />
             <h2>MoneyTransfer</h2>
           </div>
           <div className="nav-actions">
