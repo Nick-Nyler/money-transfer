@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
+import LandingPage from "./components/LandingPage"
 import Login from "./components/Login"
 import Register from "./components/Register"
 import Dashboard from "./components/Dashboard"
@@ -45,6 +46,7 @@ function App() {
         {isAuthenticated && <Navigation />}
         <div className="content-container">
           <Routes>
+            <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
             <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
             <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} />
 
@@ -129,7 +131,6 @@ function App() {
               }
             />
 
-            <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
