@@ -27,18 +27,18 @@ const Navigation = () => {
   }
 
   const regularNavItems = [
-    { path: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { path: "/dashboard", label: "Dashboard", icon: "📊" },
     { path: "/send-money", label: "Send Money", icon: "💸" },
     { path: "/add-funds", label: "Add Funds", icon: "💰" },
     { path: "/beneficiaries", label: "Beneficiaries", icon: "👥" },
-    { path: "/transactions", label: "Transactions", icon: "📊" },
+    { path: "/transactions", label: "Transactions", icon: "📋" },
     { path: "/profile", label: "Profile", icon: "👤" },
   ]
 
   const adminNavItems = [
-    { path: "/admin", label: "Admin Dashboard", icon: "⚡" },
-    { path: "/admin/users", label: "User Management", icon: "👥" },
-    { path: "/admin/transactions", label: "Transaction Monitoring", icon: "📈" },
+    { path: "/admin", label: "Admin", icon: "⚙️" },
+    { path: "/admin/users", label: "Users", icon: "👥" },
+    { path: "/admin/transactions", label: "Monitor", icon: "📈" },
   ]
 
   return (
