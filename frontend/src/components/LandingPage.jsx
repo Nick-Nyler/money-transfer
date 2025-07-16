@@ -41,19 +41,19 @@ const LandingPage = () => {
       name: "Nick Nyler",
       role: "Small Business Owner",
       content: "MoneyTransfer has revolutionized how I handle payments. Quick, reliable, and affordable!",
-      avatar: "S",
+      avatar: "N",
     },
     {
       name: "Kelvin Muriithi",
       role: "Freelancer",
       content: "I love how easy it is to send money to my family. The interface is so user-friendly.",
-      avatar: "M",
+      avatar: "K",
     },
     {
       name: "Ryan Ngugi",
       role: "Student",
       content: "Perfect for splitting bills with roommates. Fast transfers and great customer support!",
-      avatar: "E",
+      avatar: "R",
     },
   ]
 
