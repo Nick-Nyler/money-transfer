@@ -51,3 +51,37 @@ frontend/.env.production.local
 
 # Others
 *.log
+
+# ==== Vite env files ====
+# don’t commit your frontend API URLs
+/frontend/.env.development
+/frontend/.env.production
+
+# Root envs
+*.env
+
+# === Node “stuff” ===
+/node_modules
+/frontend/node_modules
+
+# === Vite build output ===
+/dist
+/.vite
+/frontend/dist
+
+# === Env files & secrets ===
+*.env
+/frontend/.env.development
+/frontend/.env.production
+/backend/.env
+
+# === Python venvs ===
+/backend/venv
+/backend/env
+/backend/.venv
+
+# === Logs & OS files ===
+npm-debug.log*
+yarn-error.log*
+*.log
+.DS_Store
