@@ -1,8 +1,9 @@
-from config.db import db
+from extensions import db
 from datetime import datetime
 
 class Transaction(db.Model):
-    tablename = 'transactions'
+    __tablename__ = 'transactions'
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'), nullable=False)

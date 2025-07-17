@@ -1,7 +1,8 @@
-from config.db import db
+from extensions import db
 
 class Beneficiary(db.Model):
-    tablename = "beneficiaries"
+    __tablename__ = "beneficiaries"
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
