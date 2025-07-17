@@ -41,19 +41,19 @@ const LandingPage = () => {
       name: "Nick Nyler",
       role: "Small Business Owner",
       content: "MoneyTransfer has revolutionized how I handle payments. Quick, reliable, and affordable!",
-      avatar: "S",
+      avatar: "N",
     },
     {
       name: "Kelvin Muriithi",
       role: "Freelancer",
       content: "I love how easy it is to send money to my family. The interface is so user-friendly.",
-      avatar: "M",
+      avatar: "K",
     },
     {
       name: "Ryan Ngugi",
       role: "Student",
       content: "Perfect for splitting bills with roommates. Fast transfers and great customer support!",
-      avatar: "E",
+      avatar: "R",
     },
   ]
 
@@ -70,10 +70,11 @@ const LandingPage = () => {
       <nav className="landing-nav">
         <div className="nav-container">
           <div className="nav-brand">
+            <img src="/logo.png" alt="MoneyTransfer Logo" className="nav-logo" />
             <h2>MoneyTransfer</h2>
           </div>
           <div className="nav-actions">
-            <Link to="/login" className="btn btn-outline">
+            <Link to="/login" className="btn btn-outline btn-signin">
               Sign In
             </Link>
             <Link to="/register" className="btn btn-primary">
@@ -292,7 +293,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2024 MoneyTransfer. All rights reserved.</p>
+            <p>&copy; 2025 MoneyTransfer. All rights reserved.</p>
             <div className="footer-links">
               <a href="#privacy">Privacy Policy</a>
               <a href="#terms">Terms of Service</a>
