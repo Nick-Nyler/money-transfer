@@ -1,9 +1,9 @@
-from marshmallow import Schema, fields
+from extensions import ma
+from models.wallet import Wallet
 
-class WalletSchema(Schema):
-    id = fields.Int(dump_only=True)
-    balance = fields.Float()
-    user_id = fields.Int(required=True)
+class WalletSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Wallet
+        load_instance = True
 
 wallet_schema = WalletSchema()
-wallets_schema = WalletSchema(many=True)
