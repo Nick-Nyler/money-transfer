@@ -1,11 +1,11 @@
-from marshmallow import Schema, fields
+from extensions import ma
+from models.user import User
 
-class UserSchema(Schema):
-    id = fields.Int(dump_only=True)
-    name = fields.Str(required=True)
-    email = fields.Email(required=True)
-    password = fields.Str(load_only=True, required=True)
-    is_admin = fields.Bool()
+class UserSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = User
+        load_instance = True
+        exclude = ("password_hash",) # Exclude password hash from serialization
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
