@@ -1,35 +1,55 @@
 from models.transaction import Transaction
 from models.wallet import Wallet
 from models.beneficiary import Beneficiary
-from schemas.transaction_schema import transactions_schema, transaction_schema
-from extensions import db
+from models.user import User
+from database.db_init import db
 import datetime
 
 def get_transactions(user_id):
-    transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.created_at.desc()).all()
-    return transactions_schema.dump(transactions)
+    """
+    Fetches all transactions for a given user.
+    """
+    transactions = db.session.query(Transaction).filter_by(user_id=user_id).order_by(Transaction.created_at.desc()).all()
+    return [t.to_dict() for t in transactions] # Return list of dictionaries
 
 def send_money(user_id, beneficiary_id, amount, description):
-    wallet = Wallet.query.filter_by(user_id=user_id).first()
-    if not wallet:
-        raise ValueError("Wallet not found")
+    """
+    Handles the logic for sending money from one user to a beneficiary.
+    """
+    user_wallet = db.session.query(Wallet).filter_by(user_id=user_id).first()
+    if not user_wallet:
+        return {"error": "User wallet not found"}, 404
 
-    beneficiary = Beneficiary.query.get(beneficiary_id)
-    if not beneficiary or beneficiary.user_id != user_id: # Ensure beneficiary belongs to the user
-        raise ValueError("Beneficiary not found or does not belong to you")
+    beneficiary = db.session.query(Beneficiary).get(beneficiary_id)
+    if not beneficiary:
+        return {"error": "Beneficiary not found"}, 404
 
-    fee = round(amount * 0.01, 2) # 1% fee
+    # Calculate fee (1%)
+    fee = round(amount * 0.01)
     total_amount = amount + fee
 
-    if wallet.balance < total_amount:
-        raise ValueError("Insufficient funds")
+    if user_wallet.balance < total_amount:
+        return {"error": "Insufficient funds"}, 400
+
+    # Find the recipient user's wallet based on beneficiary phone
+    recipient_user = db.session.query(User).filter_by(phone=beneficiary.phone).first()
+    if not recipient_user:
+        return {"error": "Recipient user not found in the system"}, 404
+
+    recipient_wallet = db.session.query(Wallet).filter_by(user_id=recipient_user.id).first()
+    if not recipient_wallet:
+        return {"error": "Recipient wallet not found"}, 404
 
     # Deduct from sender's wallet
-    wallet.balance -= total_amount
-    db.session.add(wallet)
+    user_wallet.balance -= total_amount
+    db.session.add(user_wallet)
 
-    # Create sender's transaction
-    sender_transaction = Transaction(
+    # Add to recipient's wallet
+    recipient_wallet.balance += amount # Recipient receives amount without fee
+    db.session.add(recipient_wallet)
+
+    # Create transaction record for sender
+    new_transaction = Transaction(
         user_id=user_id,
         type="send",
         amount=amount,
@@ -37,34 +57,32 @@ def send_money(user_id, beneficiary_id, amount, description):
         status="completed",
         description=description,
         recipient_name=beneficiary.name,
-        recipient_phone=beneficiary.phone,
-        created_at=datetime.datetime.utcnow()
+        recipient_phone=beneficiary.phone
     )
-    db.session.add(sender_transaction)
+    db.session.add(new_transaction)
 
-    # Simulate recipient receiving money (if recipient is also a user in the system)
-    # For this mock, we'll just log it or create a 'receive' transaction for the recipient if they exist
-    recipient_user = None
-    if beneficiary.phone:
-        recipient_user = db.session.query(User).filter_by(phone=beneficiary.phone).first()
+    # Create transaction record for recipient (optional, but good for full history)
+    # Assuming g.current_user is available from a decorator for sender's details
+    # Note: g.current_user needs to be set by an authentication decorator
+    sender_name = f"{g.current_user.first_name} {g.current_user.last_name}" if hasattr(g, 'current_user') and g.current_user else "Unknown Sender"
+    sender_phone = g.current_user.phone if hasattr(g, 'current_user') and g.current_user else "Unknown Phone"
 
-    if recipient_user:
-        recipient_wallet = Wallet.query.filter_by(user_id=recipient_user.id).first()
-        if recipient_wallet:
-            recipient_wallet.balance += amount # Recipient receives full amount, sender pays fee
-            db.session.add(recipient_wallet)
-            recipient_transaction = Transaction(
-                user_id=recipient_user.id,
-                type="receive",
-                amount=amount,
-                fee=0, # Recipient doesn't pay fee
-                status="completed",
-                description=f"Received from {wallet.user.first_name} {wallet.user.last_name}",
-                recipient_name=wallet.user.first_name + " " + wallet.user.last_name,
-                recipient_phone=wallet.user.phone,
-                created_at=datetime.datetime.utcnow()
-            )
-            db.session.add(recipient_transaction)
+    recipient_transaction = Transaction(
+        user_id=recipient_user.id,
+        type="receive",
+        amount=amount,
+        fee=0, # No fee for receiving
+        status="completed",
+        description=f"Received from {sender_name}",
+        recipient_name=sender_name, # Sender's name as recipient
+        recipient_phone=sender_phone
+    )
+    db.session.add(recipient_transaction)
 
     db.session.commit()
-    return transaction_schema.dump(sender_transaction)
+
+    return {
+        "message": "Money sent successfully",
+        "transaction": new_transaction.to_dict(),
+        "wallet": user_wallet.to_dict()
+    }, 200
