@@ -1,16 +1,33 @@
-	
-from flask import jsonify, request
 from models.wallet import Wallet
-from config.db import db
+from models.transaction import Transaction
+from schemas.wallet_schema import wallet_schema
+from extensions import db
+import datetime
 
-def create_wallet(user_id):
-    wallet = Wallet(user_id=user_id, balance=0.0)
+def get_wallet_balance(user_id):
+    wallet = Wallet.query.filter_by(user_id=user_id).first()
+    if not wallet:
+        raise ValueError("Wallet not found for this user")
+    return wallet_schema.dump(wallet)
+
+def add_funds_to_wallet(user_id, amount):
+    wallet = Wallet.query.filter_by(user_id=user_id).first()
+    if not wallet:
+        raise ValueError("Wallet not found")
+
+    wallet.balance += amount
     db.session.add(wallet)
-    db.session.commit()
-    return jsonify({"message": "Wallet created", "wallet_id": wallet.id}), 201
 
-def get_wallet_balance(wallet_id):
-    wallet = Wallet.query.get(wallet_id)
-    if wallet:
-        return jsonify({"wallet_id": wallet.id, "balance": wallet.balance})
-    return jsonify({"error": "Wallet not found"}), 404
+    new_transaction = Transaction(
+        user_id=user_id,
+        type="deposit",
+        amount=amount,
+        fee=0,
+        status="completed",
+        description="Deposit via M-Pesa",
+        created_at=datetime.datetime.utcnow()
+    )
+    db.session.add(new_transaction)
+    db.session.commit()
+
+    return wallet_schema.dump(wallet)
