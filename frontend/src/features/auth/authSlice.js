@@ -44,10 +44,15 @@ export const changePassword = createAsyncThunk(
   },
 )
 
-// Check if user is already logged in
-export const checkAuth = createAsyncThunk("auth/checkAuth", async () => {
-  const user = api.getCurrentUser()
-  return { user }
+// Check if user is already logged in by fetching profile from backend
+export const checkAuth = createAsyncThunk("auth/checkAuth", async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.getProfile()
+    return { user: response.user } // Ensure this matches the payload structure
+  } catch (error) {
+    // If there's an error (e.g., no token, invalid token), it means user is not authenticated
+    return rejectWithValue(error.message)
+  }
 })
 
 const initialState = {
@@ -105,11 +110,21 @@ const authSlice = createSlice({
       })
 
       // Check Auth
+      .addCase(checkAuth.pending, (state) => {
+        state.status = "loading" // Set loading state for checkAuth
+      })
       .addCase(checkAuth.fulfilled, (state, action) => {
+        state.status = "succeeded"
         if (action.payload.user) {
           state.user = action.payload.user
           state.isAuthenticated = true
         }
+      })
+      .addCase(checkAuth.rejected, (state, action) => {
+        state.status = "failed"
+        state.user = null // Ensure user is null on failed auth check
+        state.isAuthenticated = false
+        state.error = action.payload // Store error message
       })
 
       // Update Profile
