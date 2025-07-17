@@ -13,83 +13,97 @@ def init_db(app):
         seed_data()
 
 def seed_data():
-    # Check if users already exist to prevent duplicate seeding
-    if User.query.count() == 0:
-        print("Seeding initial data...")
-
-        # Demo Users
-        admin_user = User(
-            email="admin@example.com",
-            password_hash=generate_password_hash("admin123"),
-            first_name="Admin",
-            last_name="User",
-            phone="+254712345678",
-            role="admin",
-            created_at=datetime.datetime.utcnow()
-        )
-        john_doe = User(
-            email="john@example.com",
-            password_hash=generate_password_hash("password123"),
-            first_name="John",
-            last_name="Doe",
-            phone="+254723456789",
-            role="user",
-            created_at=datetime.datetime.utcnow() - datetime.timedelta(days=10)
-        )
-        db.session.add_all([admin_user, john_doe])
-        db.session.commit()
-
-        # Demo Wallets
-        admin_wallet = Wallet(user_id=admin_user.id, balance=50000, currency="KES")
-        john_wallet = Wallet(user_id=john_doe.id, balance=25000, currency="KES")
-        db.session.add_all([admin_wallet, john_wallet])
-        db.session.commit()
-
-        # Demo Beneficiaries for John Doe
-        jane_smith = Beneficiary(
-            user_id=john_doe.id,
-            name="Jane Smith",
-            phone="+254734567890",
-            email="jane@example.com",
-            account_number="123456789",
-            relationship="Friend",
-            created_at=datetime.datetime.utcnow() - datetime.timedelta(days=5)
-        )
-        michael_johnson = Beneficiary(
-            user_id=john_doe.id,
-            name="Michael Johnson",
-            phone="+254745678901",
-            email="michael@example.com",
-            account_number="987654321",
-            relationship="Family",
-            created_at=datetime.datetime.utcnow() - datetime.timedelta(days=3)
-        )
-        db.session.add_all([jane_smith, michael_johnson])
-        db.session.commit()
-
-        # Demo Transactions
-        transactions = [
-            Transaction(
-                user_id=john_doe.id, type="deposit", amount=10000, fee=0, status="completed",
-                description="Deposit via M-Pesa", created_at=datetime.datetime.utcnow() - datetime.timedelta(days=2)
-            ),
-            Transaction(
-                user_id=john_doe.id, type="send", amount=5000, fee=50, status="completed",
-                description="Payment for services", recipient_name="Jane Smith", recipient_phone="+254734567890",
-                created_at=datetime.datetime.utcnow() - datetime.timedelta(days=1)
-            ),
-            Transaction(
-                user_id=john_doe.id, type="receive", amount=20000, fee=0, status="completed",
-                description="Salary payment", recipient_name="John Doe", recipient_phone="+254723456789",
-                created_at=datetime.datetime.utcnow()
-            ),
-            Transaction(
-                user_id=admin_user.id, type="deposit", amount=50000, fee=0, status="completed",
-                description="Initial deposit", created_at=datetime.datetime.utcnow() - datetime.timedelta(days=15)
-            ),
-        ]
-        db.session.add_all(transactions)
-        db.session.commit()
-        print("Data seeding complete.")
-    else:
+    if User.query.first():
         print("Users already exist. Skipping data seeding.")
+        return
+
+    print("Seeding initial data...")
+
+    # Create Admin User
+    admin_user = User(
+        first_name="Admin",
+        last_name="User",
+        email="admin@example.com",
+        phone="+254700000000",
+        password_hash=generate_password_hash("admin123"),
+        is_admin=True,
+        created_at=datetime.datetime.utcnow()
+    )
+    db.session.add(admin_user)
+    db.session.commit() # Commit to get admin_user.id
+
+    admin_wallet = Wallet(user_id=admin_user.id, balance=100000.00, currency="KES")
+    db.session.add(admin_wallet)
+
+    # Create Regular User
+    john_user = User(
+        first_name="John",
+        last_name="Doe",
+        email="john@example.com",
+        phone="+254712345678",
+        password_hash=generate_password_hash("password123"),
+        is_admin=False,
+        created_at=datetime.datetime.utcnow()
+    )
+    db.session.add(john_user)
+    db.session.commit() # Commit to get john_user.id
+
+    john_wallet = Wallet(user_id=john_user.id, balance=5000.00, currency="KES")
+    db.session.add(john_wallet)
+
+    # Create Beneficiaries for John Doe
+    beneficiary1 = Beneficiary(
+        user_id=john_user.id,
+        name="Jane Smith",
+        phone="+254734567890",
+        bank_name="Equity Bank", # Added bank_name
+        account_number="1234567890"
+    )
+    beneficiary2 = Beneficiary(
+        user_id=john_user.id,
+        name="Michael Johnson",
+        phone="+254723456789",
+        bank_name="KCB Bank", # Added bank_name
+        account_number="0987654321"
+    )
+    db.session.add_all([beneficiary1, beneficiary2])
+    db.session.commit() # Commit to get beneficiary IDs
+
+    # Create Sample Transactions for John Doe
+    transaction1 = Transaction(
+        user_id=john_user.id,
+        type="send",
+        amount=500.00,
+        fee=5.00,
+        status="completed",
+        description="Groceries",
+        recipient_name="Jane Smith",
+        recipient_phone="+254734567890",
+        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=5)
+    )
+    transaction2 = Transaction(
+        user_id=john_user.id,
+        type="receive",
+        amount=1000.00,
+        fee=0.00,
+        status="completed",
+        description="Freelance Payment",
+        recipient_name="Client Co.",
+        recipient_phone="+254787654321",
+        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=3)
+    )
+    transaction3 = Transaction(
+        user_id=john_user.id,
+        type="deposit",
+        amount=2000.00,
+        fee=0.00,
+        status="completed",
+        description="M-Pesa Deposit",
+        recipient_name="Self",
+        recipient_phone=john_user.phone,
+        created_at=datetime.datetime.utcnow() - datetime.timedelta(days=1)
+    )
+    db.session.add_all([transaction1, transaction2, transaction3])
+    db.session.commit()
+
+    print("Data seeding complete.")
