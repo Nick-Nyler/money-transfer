@@ -1,12 +1,17 @@
 from extensions import db
-from datetime import datetime
+import datetime
 
 class Transaction(db.Model):
-    __tablename__ = 'transactions'
-
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    type = db.Column(db.String(20), nullable=False) # 'send', 'receive', 'deposit'
     amount = db.Column(db.Float, nullable=False)
-    type = db.Column(db.String(50), nullable=False)  
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    fee = db.Column(db.Float, default=0.0, nullable=False)
+    status = db.Column(db.String(20), default='completed', nullable=False) # 'completed', 'pending', 'failed'
+    description = db.Column(db.String(255), nullable=True)
+    recipient_name = db.Column(db.String(100), nullable=True)
+    recipient_phone = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Transaction {self.id} - {self.type} {self.amount}>'

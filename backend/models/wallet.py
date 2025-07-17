@@ -1,10 +1,10 @@
 from extensions import db
 
 class Wallet(db.Model):
-    __tablename__ = 'wallets'
-
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    balance = db.Column(db.Float, default=0.0)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    balance = db.Column(db.Float, default=0.0, nullable=False)
+    currency = db.Column(db.String(10), default='KES', nullable=False)
 
-    transactions = db.relationship('Transaction', backref='wallet', lazy=True)
+    def __repr__(self):
+        return f'<Wallet UserID:{self.user_id} Balance:{self.balance}>'
