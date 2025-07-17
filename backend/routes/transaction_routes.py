@@ -15,7 +15,7 @@ def get_user_transactions():
 @login_required
 def send_money():
     data = request.get_json()
-    beneficiary_id = data.get('beneficiary_id')
+    beneficiary_id = data.get('beneficiary_id') # Expecting 'beneficiary_id'
     amount = data.get('amount')
     description = data.get('description')
 
@@ -28,4 +28,6 @@ def send_money():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
+        # Log the unexpected error for debugging
+        print(f"Unexpected error in send_money route: {e}")
         return jsonify({"error": "An unexpected error occurred during money transfer."}), 500

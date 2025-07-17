@@ -20,6 +20,7 @@ def login_required(f):
             if not user_id:
                 return jsonify({"error": "Invalid or expired token"}), 401
             g.user_id = user_id # Store user_id in Flask's global context
+            g.current_user = auth_controller.get_current_user_profile(user_id) # Store full user object
         except Exception as e:
             return jsonify({"error": "Token verification failed", "details": str(e)}), 401
         return f(*args, **kwargs)
@@ -39,7 +40,7 @@ def register():
 
     try:
         user = auth_controller.register_user(first_name, last_name, email, password, phone)
-        return jsonify({"message": "User registered successfully", "user_id": user['id']}), 201
+        return jsonify({"message": "User registered successfully", "user_id": user.id}), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
@@ -89,8 +90,8 @@ def update_profile():
 @login_required
 def change_password():
     data = request.get_json()
-    old_password = data.get('oldPassword')
-    new_password = data.get('newPassword')
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
     try:
         result = auth_controller.change_user_password(g.user_id, old_password, new_password)
         return jsonify(result), 200
