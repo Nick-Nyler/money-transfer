@@ -17,6 +17,11 @@ const Dashboard = () => {
   const { transactions, status: transactionsStatus } = useSelector((state) => state.transactions)
   const { beneficiaries, status: beneficiariesStatus } = useSelector((state) => state.beneficiaries)
 
+  // derive first name, last name, initials
+  const firstName = user?.firstName || user?.first_name || ''
+  const lastName = user?.lastName || user?.last_name || ''
+  const initials = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase()
+
   useEffect(() => {
     if (user) {
       dispatch(fetchWalletBalance(user.id))
@@ -29,7 +34,10 @@ const Dashboard = () => {
   const recentTransactions = transactions.slice(0, 5)
 
   // Loading state
-  const isLoading = walletStatus === "loading" || transactionsStatus === "loading" || beneficiariesStatus === "loading"
+  const isLoading =
+    walletStatus === "loading" ||
+    transactionsStatus === "loading" ||
+    beneficiariesStatus === "loading"
 
   if (isLoading) {
     return <LoadingSpinner />
@@ -37,7 +45,11 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <h1>Welcome, {user?.firstName}!</h1>
+      {/* header with initials and greeting */}
+      <div className="dashboard-header">
+      
+        <h1>Welcome, {firstName}!</h1>
+      </div>
 
       <div className="dashboard-grid">
         <div className="dashboard-main">
@@ -90,12 +102,17 @@ const Dashboard = () => {
               <div className="beneficiaries-list">
                 {beneficiaries.slice(0, 5).map((beneficiary) => (
                   <div key={beneficiary.id} className="beneficiary-item">
-                    <div className="beneficiary-avatar">{beneficiary.name.charAt(0)}</div>
+                    <div className="beneficiary-avatar">
+                      {beneficiary.name.charAt(0)}
+                    </div>
                     <div className="beneficiary-info">
                       <h3>{beneficiary.name}</h3>
                       <p>{beneficiary.phone}</p>
                     </div>
-                    <Link to={`/send-money?beneficiaryId=${beneficiary.id}`} className="btn btn-sm">
+                    <Link
+                      to={`/send-money?beneficiaryId=${beneficiary.id}`}
+                      className="btn btn-sm"
+                    >
                       Send
                     </Link>
                   </div>
