@@ -104,8 +104,8 @@ const SendMoney = () => {
 
     dispatch(
       sendMoney({
-        // userId: user.id, // Removed: userId is derived from token on backend
-        beneficiary_id: selectedBeneficiary.id, // Changed from beneficiaryId
+        userId: user.id,
+        beneficiaryId: selectedBeneficiary.id,
         amount: numAmount,
         description: description || `Payment to ${selectedBeneficiary.name}`,
       }),
