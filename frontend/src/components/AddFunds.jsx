@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
-import { addFunds } from "../features/wallet/walletSlice"
+import { addFunds, fetchWalletBalance } from "../features/wallet/walletSlice"
+import { fetchTransactions } from "../features/transactions/transactionsSlice"  // ← added import
 import WalletCard from "./common/WalletCard"
 import LoadingSpinner from "./common/LoadingSpinner"
 
@@ -23,24 +24,19 @@ const AddFunds = () => {
   useEffect(() => {
     if (user && user.phone) {
       setPhoneNumber(user.phone)
+      dispatch(fetchWalletBalance(user.id))
     }
-  }, [user])
+  }, [dispatch, user])
 
   const validateStep1 = () => {
     const errors = {}
-    const numAmount = Number.parseFloat(amount)
+    const num = Number.parseFloat(amount)
 
-    if (!amount) {
-      errors.amount = "Amount is required"
-    } else if (isNaN(numAmount)) {
-      errors.amount = "Amount must be a number"
-    } else if (numAmount <= 0) {
-      errors.amount = "Amount must be greater than 0"
-    } else if (numAmount < 100) {
-      errors.amount = "Minimum amount is KES 100"
-    } else if (numAmount > 300000) {
-      errors.amount = "Maximum amount is KES 300,000"
-    }
+    if (!amount) errors.amount = "Amount is required"
+    else if (isNaN(num)) errors.amount = "Amount must be a number"
+    else if (num <= 0) errors.amount = "Amount must be greater than 0"
+    else if (num < 100) errors.amount = "Minimum amount is KES 100"
+    else if (num > 300000) errors.amount = "Maximum amount is KES 300,000"
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -48,44 +44,39 @@ const AddFunds = () => {
 
   const validateStep2 = () => {
     const errors = {}
+    const cleaned = phoneNumber.replace(/\s/g, "")
 
-    if (!phoneNumber) {
-      errors.phoneNumber = "Phone number is required"
-    } else if (!/^\+?\d{10,15}$/.test(phoneNumber.replace(/\s/g, ""))) {
+    if (!phoneNumber) errors.phoneNumber = "Phone number is required"
+    else if (!/^\+?\d{10,15}$/.test(cleaned))
       errors.phoneNumber = "Phone number is invalid"
-    }
 
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
 
   const handleNextStep = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2)
-    } else if (step === 2 && validateStep2()) {
-      setStep(3)
-    }
+    if (step === 1 && validateStep1()) setStep(2)
+    else if (step === 2 && validateStep2()) setStep(3)
   }
 
-  const handlePreviousStep = () => {
-    setStep(step - 1)
-  }
+  const handlePreviousStep = () => setStep((s) => s - 1)
 
   const simulateMpesaPayment = () => {
     setIsProcessing(true)
 
-    // Simulate M-Pesa payment process
+    // Simulate M-Pesa flow
     setTimeout(() => {
       const numAmount = Number.parseFloat(amount)
       dispatch(addFunds({ userId: user.id, amount: numAmount }))
         .unwrap()
         .then(() => {
+          // 🔥 Logic change: refresh both wallet balance AND transactions
+          dispatch(fetchWalletBalance(user.id))
+          dispatch(fetchTransactions(user.id))
           setIsProcessing(false)
           setTransactionComplete(true)
         })
-        .catch(() => {
-          setIsProcessing(false)
-        })
+        .catch(() => setIsProcessing(false))
     }, 3000)
   }
 
@@ -96,6 +87,9 @@ const AddFunds = () => {
   if (status === "loading" && !isProcessing) {
     return <LoadingSpinner />
   }
+
+  // For display
+  const displayAmount = Number.parseFloat(amount) || 0
 
   return (
     <div className="add-funds-container">
@@ -195,7 +189,7 @@ const AddFunds = () => {
             <div className="confirmation-details">
               <div className="detail-row">
                 <span>Amount:</span>
-                <span>KES {Number.parseFloat(amount).toLocaleString()}</span>
+                <span>KES {displayAmount.toLocaleString()}</span>
               </div>
               <div className="detail-row">
                 <span>Phone Number:</span>
@@ -238,7 +232,7 @@ const AddFunds = () => {
             <div className="success">
               <div className="success-icon">✓</div>
               <h2>Payment Successful!</h2>
-              <p>KES {Number.parseFloat(amount).toLocaleString()} has been added to your wallet.</p>
+              <p>KES {displayAmount.toLocaleString()} has been added to your wallet.</p>
 
               <div className="form-actions">
                 <button type="button" className="btn btn-primary" onClick={handleFinish}>

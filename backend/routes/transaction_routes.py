@@ -11,7 +11,7 @@ def get_user_transactions():
         transactions = transaction_controller.get_transactions(g.user_id)
         return jsonify({"transactions": transactions}), 200
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 00
 
 @transaction_bp.route('/send', methods=['POST'])
 @login_required
@@ -22,10 +22,10 @@ def send_money():
     description = data.get('description')
 
     if not beneficiary_id or not amount or not isinstance(amount, (int, float)) or amount <= 0:
-        return jsonify({"error": "Beneficiary ID and valid amount are required"}), 400
+        return jsonify({"error": "Beneficiary ID and valid amount are required"}), 00
 
     try:
         transaction = transaction_controller.send_money(g.user_id, beneficiary_id, amount, description)
         return jsonify({"transaction": transaction}), 200
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 00

@@ -15,9 +15,11 @@ def add_funds_to_wallet(user_id, amount):
     if not wallet:
         raise ValueError("Wallet not found")
 
+    # ── Increase the balance ──
     wallet.balance += amount
     db.session.add(wallet)
 
+    # ── Record the deposit transaction ──
     new_transaction = Transaction(
         user_id=user_id,
         type="deposit",
@@ -28,6 +30,6 @@ def add_funds_to_wallet(user_id, amount):
         created_at=datetime.datetime.utcnow()
     )
     db.session.add(new_transaction)
-    db.session.commit()
 
+    db.session.commit()
     return wallet_schema.dump(wallet)

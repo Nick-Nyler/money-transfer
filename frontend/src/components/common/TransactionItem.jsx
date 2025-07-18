@@ -1,6 +1,10 @@
+// src/components/common/TransactionItem.jsx
 "use client"
 
+import React from "react"
+
 const TransactionItem = ({ transaction, detailed = false }) => {
+  // icon
   const getTransactionIcon = (type) => {
     switch (type) {
       case "send":
@@ -14,6 +18,7 @@ const TransactionItem = ({ transaction, detailed = false }) => {
     }
   }
 
+  // color class
   const getTransactionColor = (type) => {
     switch (type) {
       case "send":
@@ -27,26 +32,36 @@ const TransactionItem = ({ transaction, detailed = false }) => {
     }
   }
 
+  // amount formatting
   const formatAmount = (amount, type) => {
     const prefix = type === "send" ? "-" : type === "receive" ? "+" : ""
-    return `${prefix}KES ${amount.toLocaleString()}`
+    return `${prefix}KES ${Number(amount).toLocaleString()}`
   }
 
+  // parse date/time
+  const rawDate = transaction.created_at ?? transaction.createdAt
+  const dateObj = rawDate ? new Date(rawDate) : null
+  const dateStr = dateObj?.toLocaleDateString() ?? "—"
+  const timeStr = detailed && dateObj ? dateObj.toLocaleTimeString() : null
+
+  // description line
+  const desc =
+    transaction.type === "deposit"
+      ? "Deposit via M-Pesa"
+      : transaction.type === "send"
+      ? `Payment to ${transaction.recipient_name}`
+      : `Received from ${transaction.recipient_name}`
+
   return (
-    <div className={`transaction-item ${getTransactionColor(transaction.type)}`}>
-      <div className="transaction-icon">{getTransactionIcon(transaction.type)}</div>
-
-      <div className="transaction-details">
-        <div className="transaction-main">
-          <h4 className="transaction-description">{transaction.description || `${transaction.type} transaction`}</h4>
-          {transaction.recipientName && <p className="transaction-recipient">To: {transaction.recipientName}</p>}
-          {transaction.recipientPhone && detailed && <p className="transaction-phone">{transaction.recipientPhone}</p>}
-        </div>
-
-        <div className="transaction-meta">
-          <span className="transaction-date">{new Date(transaction.createdAt).toLocaleDateString()}</span>
-          {detailed && <span className="transaction-time">{new Date(transaction.createdAt).toLocaleTimeString()}</span>}
-          <span className={`transaction-status ${transaction.status}`}>{transaction.status}</span>
+    <div className="transaction-item">
+      <div className="transaction-header">
+        <span className="transaction-icon">{getTransactionIcon(transaction.type)}</span>
+        <div className="transaction-info">
+          <p className="transaction-desc">{desc}</p>
+          <div className="transaction-meta">
+            <span className="transaction-date">{dateStr}</span>
+            {timeStr && <span className="transaction-time">{timeStr}</span>}
+          </div>
         </div>
       </div>
 
@@ -54,8 +69,12 @@ const TransactionItem = ({ transaction, detailed = false }) => {
         <span className={`amount ${getTransactionColor(transaction.type)}`}>
           {formatAmount(transaction.amount, transaction.type)}
         </span>
-        {transaction.fee > 0 && detailed && <span className="fee">Fee: KES {transaction.fee.toLocaleString()}</span>}
+        {transaction.fee > 0 && detailed && (
+          <span className="fee">Fee: KES {transaction.fee.toLocaleString()}</span>
+        )}
       </div>
+
+      <span className={`status ${transaction.status}`}>{transaction.status}</span>
     </div>
   )
 }

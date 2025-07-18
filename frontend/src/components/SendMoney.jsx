@@ -1,3 +1,4 @@
+// src/components/SendMoney.jsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -40,7 +41,7 @@ const SendMoney = () => {
 
   // auto-select via query param
   useEffect(() => {
-    if (preSelectedBeneficiaryId && beneficiaries.length) {
+    if (preSelectedBeneficiaryId && beneficiaries.length > 0) {
       const found = beneficiaries.find((b) => b.id === +preSelectedBeneficiaryId)
       if (found) {
         setSelectedBeneficiary(found)
@@ -49,6 +50,7 @@ const SendMoney = () => {
     }
   }, [preSelectedBeneficiaryId, beneficiaries])
 
+  // validations
   const validateStep1 = () => {
     const errs = {}
     if (!selectedBeneficiary) errs.beneficiary = "Please select a beneficiary"
@@ -58,30 +60,38 @@ const SendMoney = () => {
 
   const validateStep2 = () => {
     const errs = {}
-    const num = parseFloat(amount)
+    const num = parseFloat(amount) || 0
     const fee = num * 0.01
     const total = num + fee
 
-    if (!amount) errs.amount = "Amount required"
-    else if (isNaN(num)) errs.amount = "Must be a number"
-    else if (num <= 0) errs.amount = "Must be > 0"
-    else if (num < 100) errs.amount = "Minimum KES 100"
+    if (!amount) errs.amount = "Amount is required"
+    else if (isNaN(parseFloat(amount))) errs.amount = "Amount must be a number"
+    else if (num <= 0) errs.amount = "Amount must be greater than 0"
+    else if (num < 100) errs.amount = "Minimum amount is KES 100"
     else if (wallet?.balance != null && total > wallet.balance)
-      errs.amount = "Insufficient funds"
+      errs.amount = "Insufficient funds (including fee)"
 
     setFormErrors(errs)
     return !Object.keys(errs).length
   }
 
-  const handleNext = () => {
+  // navigation
+  const handleNextStep = () => {
     if (step === 1 && validateStep1()) setStep(2)
     else if (step === 2 && validateStep2()) setStep(3)
   }
-  const handleBack = () => setStep((s) => s - 1)
+  const handlePreviousStep = () => setStep((s) => s - 1)
 
-  const handleSend = () => {
+  // selection
+  const handleBeneficiarySelect = (b) => {
+    setSelectedBeneficiary(b)
+    setFormErrors({})
+  }
+
+  // send
+  const handleSendMoney = () => {
     setIsProcessing(true)
-    const num = parseFloat(amount)
+    const num = parseFloat(amount) || 0
 
     dispatch(
       sendMoney({
@@ -94,16 +104,17 @@ const SendMoney = () => {
       .unwrap()
       .then((res) => {
         setIsProcessing(false)
-        setTransactionDetails(res.transaction)
         setTransactionComplete(true)
-        // refresh wallet
-        dispatch(fetchWalletBalance(user.id))
+        setTransactionDetails(res.transaction)
+        dispatch(fetchWalletBalance(user.id)) // refresh balance
+        // Removing auto-navigation; user will click button to return
       })
       .catch(() => setIsProcessing(false))
   }
 
   const handleFinish = () => navigate("/dashboard")
 
+  // loading
   if (beneficiariesStatus === "loading" || walletStatus === "loading")
     return <LoadingSpinner />
 
@@ -112,6 +123,10 @@ const SendMoney = () => {
   const fee = num * 0.01
   const total = num + fee
 
+  // helper to format
+  const fmt = (n) =>
+    n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
   return (
     <div className="send-money-container">
       <h1>Send Money</h1>
@@ -119,12 +134,10 @@ const SendMoney = () => {
       {wallet && <WalletCard wallet={wallet} />}
 
       <div className="stepper">
-        {[1, 2, 3].map((n) => (
-          <div key={n} className={`step ${step >= n ? "active" : ""}`}>
-            <div className="step-number">{n}</div>
-            <div className="step-label">
-              {n === 1 ? "Recipient" : n === 2 ? "Amount" : "Confirm"}
-            </div>
+        {["Recipient", "Amount", "Confirm"].map((label, i) => (
+          <div key={i} className={`step ${step >= i + 1 ? "active" : ""}`}>
+            <div className="step-number">{i + 1}</div>
+            <div className="step-label">{label}</div>
           </div>
         ))}
       </div>
@@ -132,177 +145,118 @@ const SendMoney = () => {
       {error && <div className="error-message">{error}</div>}
 
       <div className="send-money-form">
+        {/* STEP 1 */}
         {step === 1 && (
           <div className="step-content">
             <h2>Select Recipient</h2>
-            {beneficiaries.length ? (
+            {beneficiaries.length > 0 ? (
               <div className="beneficiaries-selection">
                 {beneficiaries.map((b) => (
                   <div
                     key={b.id}
-                    className={`beneficiary-card ${
+                    className={`beneficiary-select-card ${
                       selectedBeneficiary?.id === b.id ? "selected" : ""
                     }`}
-                    onClick={() => {
-                      setSelectedBeneficiary(b)
-                      setFormErrors({})
-                    }}
+                    onClick={() => handleBeneficiarySelect(b)}
                   >
-                    <div className="avatar">{b.name.charAt(0)}</div>
-                    <div className="info">
+                    <div className="beneficiary-avatar">{b.name.charAt(0)}</div>
+                    <div className="beneficiary-info">
                       <h3>{b.name}</h3>
                       <p>{b.phone}</p>
                     </div>
-                    {selectedBeneficiary?.id === b.id && <span>✓</span>}
+                    {selectedBeneficiary?.id === b.id && (
+                      <div className="selected-indicator">✓</div>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="empty">
-                <p>No beneficiaries yet.</p>
-                <button onClick={() => navigate("/beneficiaries")}>Add One</button>
+              <div className="empty-state">
+                <p>You haven't added any beneficiaries yet.</p>
+                <button className="btn btn-primary" onClick={() => navigate("/beneficiaries")}>Add Beneficiary</button>
               </div>
             )}
-            {formErrors.beneficiary && (
-              <div className="error">{formErrors.beneficiary}</div>
-            )}
+
+            {formErrors.beneficiary && <div className="error-message">{formErrors.beneficiary}</div>}
             {beneficiaries.length > 0 && (
-              <button onClick={handleNext} className="btn btn-primary">
-                Next
-              </button>
+              <div className="form-actions">
+                <button className="btn btn-primary" onClick={handleNextStep}>Next</button>
+              </div>
             )}
           </div>
         )}
 
+        {/* STEP 2 */}
         {step === 2 && (
           <div className="step-content">
             <h2>Enter Amount</h2>
             <div className="recipient-summary">
-              <div className="avatar">{selectedBeneficiary.name.charAt(0)}</div>
-              <div>
-                <h3>{selectedBeneficiary.name}</h3>
+              <div className="beneficiary-avatar">{selectedBeneficiary.name.charAt(0)}</div>
+              <div className="beneficiary-info">
+                <h3>Sending to: {selectedBeneficiary.name}</h3>
                 <p>{selectedBeneficiary.phone}</p>
               </div>
             </div>
-            <label>
-              Amount (KES)
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="100.00"
-                min="100"
-              />
-            </label>
-            {formErrors.amount && <div className="error">{formErrors.amount}</div>}
-            <div className="fee-details">
-              <div>
-                <span>Amount:</span>{" "}
-                <span>
-                  KES {num.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div>
-                <span>Fee (1%):</span>{" "}
-                <span>
-                  KES {fee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="total">
-                <span>Total:</span>{" "}
-                <span>
-                  KES {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+            <div className="form-group">
+              <label htmlFor="amount">Amount (KES)</label>
+              <input type="number" id="amount" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" min="100" />
+              {formErrors.amount && <span className="error">{formErrors.amount}</span>}
             </div>
-            <label>
-              Description (opt.)
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Why are you sending?"
-              />
-            </label>
-            <div className="actions">
-              <button onClick={handleBack} className="btn btn-outline">
-                Back
-              </button>
-              <button onClick={handleNext} className="btn btn-primary">
-                Next
-              </button>
+            <div className="fee-calculation">
+              <div className="fee-row"><span>Amount:</span><span>KES {fmt(num)}</span></div>
+              <div className="fee-row"><span>Fee (1%):</span><span>KES {fmt(fee)}</span></div>
+              <div className="fee-row total"><span>Total:</span><span>KES {fmt(total)}</span></div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="description">Description (Optional)</label>
+              <input type="text" id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="What's this payment for?" />
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={handlePreviousStep}>Back</button>
+              <button className="btn btn-primary" onClick={handleNextStep}>Next</button>
             </div>
           </div>
         )}
 
+        {/* STEP 3 */}
         {step === 3 && !isProcessing && !transactionComplete && (
           <div className="step-content">
             <h2>Confirm Transfer</h2>
-            <div className="detail-row">
-              <span>Recipient:</span> <span>{selectedBeneficiary.name}</span>
+            <div className="confirmation-details">
+              <div className="detail-row"><span>Recipient:</span><span>{selectedBeneficiary.name}</span></div>
+              <div className="detail-row"><span>Phone Number:</span><span>{selectedBeneficiary.phone}</span></div>
+              <div className="detail-row"><span>Amount:</span><span>KES {fmt(num)}</span></div>
+              <div className="detail-row"><span>Fee (1%):</span><span>KES {fmt(fee)}</span></div>
+              <div className="detail-row total"><span>Total Amount:</span><span>KES {fmt(total)}</span></div>
+              {description && <div className="detail-row"><span>Description:</span><span>{description}</span></div>}
             </div>
-            <div className="detail-row">
-              <span>Phone:</span> <span>{selectedBeneficiary.phone}</span>
-            </div>
-            <div className="detail-row">
-              <span>Amount:</span>{" "}
-              <span>KES {num.toLocaleString()}</span>
-            </div>
-            <div className="detail-row">
-              <span>Fee:</span> <span>KES {fee.toLocaleString()}</span>
-            </div>
-            <div className="detail-row total">
-              <span>Total:</span>{" "}
-              <span>KES {total.toLocaleString()}</span>
-            </div>
-            <div className="actions">
-              <button onClick={handleBack} className="btn btn-outline">
-                Back
-              </button>
-              <button
-                onClick={handleSend}
-                className="btn btn-primary"
-                disabled={transactionStatus === "loading"}
-              >
-                Confirm & Send
-              </button>
+            <div className="form-actions">
+              <button className="btn btn-outline" onClick={handlePreviousStep}>Back</button>
+              <button className="btn btn-primary" onClick={handleSendMoney} disabled={transactionStatus === "loading"}>Confirm & Send</button>
             </div>
           </div>
         )}
 
+        {/* PROCESSING */}
         {isProcessing && (
-          <div className="step-content">
+          <div className="step-content processing">
             <LoadingSpinner />
-            <p>Processing your transfer…</p>
+            <p>Processing transfer…</p>
           </div>
         )}
 
+        {/* SUCCESS */}
         {transactionComplete && (
           <div className="step-content">
-            <h2>Success!</h2>
-            <p>Txn ID: {transactionDetails?.id}</p>
-            <p>
-              Date:{" "}
-              {transactionDetails?.createdAt &&
-                new Date(transactionDetails.createdAt).toLocaleString()}
-            </p>
-            <div className="actions">
-              <button
-                onClick={() => {
-                  setStep(1)
-                  setSelectedBeneficiary(null)
-                  setAmount("")
-                  setDescription("")
-                  setTransactionComplete(false)
-                  setTransactionDetails(null)
-                }}
-                className="btn btn-outline"
-              >
-                Send Another
-              </button>
-              <button onClick={handleFinish} className="btn btn-primary">
-                Dashboard
-              </button>
+            <div className="success">
+              <div className="success-icon">✓</div>
+              <h2>Transfer Successful!</h2>
+              <p>
+                KES {fmt(parseFloat(amount) || transactionDetails.amount).toLocaleString()} has been sent successfully.
+              </p>
+              <div className="form-actions">
+                <button className="btn btn-primary" onClick={handleFinish}>Back to Dashboard</button>
+              </div>
             </div>
           </div>
         )}
