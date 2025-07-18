@@ -1,3 +1,4 @@
+// src/components/common/Navigation.jsx
 "use client"
 
 import { useState } from "react"
@@ -11,6 +12,13 @@ const Navigation = () => {
   const location = useLocation()
   const { user } = useSelector((state) => state.auth)
 
+  // 💥 Pull first & last, handle snake_case too
+  const firstName = user?.firstName || user?.first_name || ""
+  const lastName  = user?.lastName  || user?.last_name   || ""
+  const initials  = (
+    firstName.charAt(0) + lastName.charAt(0)
+  ).toUpperCase()
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleLogout = () => {
@@ -22,23 +30,21 @@ const Navigation = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
-  const isActive = (path) => {
-    return location.pathname === path
-  }
+  const isActive = (path) => location.pathname === path
 
   const regularNavItems = [
-    { path: "/dashboard", label: "Dashboard", icon: "📊" },
-    { path: "/send-money", label: "Send Money", icon: "💸" },
-    { path: "/add-funds", label: "Add Funds", icon: "💰" },
+    { path: "/dashboard",     label: "Dashboard",    icon: "🏠" },
+    { path: "/send-money",    label: "Send Money",   icon: "💸" },
+    { path: "/add-funds",     label: "Add Funds",     icon: "💰" },
     { path: "/beneficiaries", label: "Beneficiaries", icon: "👥" },
-    { path: "/transactions", label: "Transactions", icon: "📋" },
-    { path: "/profile", label: "Profile", icon: "👤" },
+    { path: "/transactions",  label: "Transactions",  icon: "📊" },
+    { path: "/profile",       label: "Profile",       icon: "👤" },
   ]
 
   const adminNavItems = [
-    { path: "/admin", label: "Admin", icon: "⚙️" },
-    { path: "/admin/users", label: "Users", icon: "👥" },
-    { path: "/admin/transactions", label: "Monitor", icon: "📈" },
+    { path: "/admin",               label: "Admin Dashboard",        icon: "⚡" },
+    { path: "/admin/users",         label: "User Management",        icon: "👥" },
+    { path: "/admin/transactions",  label: "Transaction Monitoring", icon: "📈" },
   ]
 
   return (
@@ -90,10 +96,11 @@ const Navigation = () => {
 
           <div className="nav-user">
             <div className="user-info">
-              <div className="user-avatar">{user?.firstName?.charAt(0)}</div>
+              {/* two-letter initials here */}
+              <div className="user-avatar">{initials}</div>
               <div className="user-details">
                 <span className="user-name">
-                  {user?.firstName} {user?.lastName}
+                  {firstName} {lastName}
                 </span>
                 <span className="user-role">{user?.role}</span>
               </div>

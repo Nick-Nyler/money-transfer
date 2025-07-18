@@ -2427,3 +2427,18 @@
 }
 
 
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #6a5af9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.85rem; /* fits two letters */
+  margin-right: 0.75rem;
+}
