@@ -6,50 +6,33 @@ const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : "http://localhost:5000/api";
 
-// Helper function to make API calls
+// Helper for API calls
 const _callApi = async (endpoint, method = "GET", data = null, token = null) => {
-  const headers = {
-    "Content-Type": "application/json",
-  };
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const config = {
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
     method,
     headers,
     body: data ? JSON.stringify(data) : null,
-  };
-
-  try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, config);
-    const responseData = await response.json();
-
-    if (!response.ok) {
-      // If response is not OK, throw an error with the backend's error message
-      throw new Error(responseData.error || "Something went wrong");
-    }
-
-    return responseData;
-  } catch (error) {
-    console.error("API call failed:", error);
-    throw error; // Re‑throw to be caught by Redux thunks
-  }
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Something went wrong");
+  return json;
 };
 
 export const api = {
   // — Auth —
   login: async (email, password) => {
-    const response = await _callApi("/auth/login", "POST", { email, password });
-    localStorage.setItem("authToken", response.token);
-    return { user: response.user };
+    const { token, user } = await _callApi("/auth/login", "POST", { email, password });
+    localStorage.setItem("authToken", token);
+    return { user };
   },
 
   register: async (userData) => {
-    const response = await _callApi("/auth/register", "POST", userData);
-    localStorage.setItem("authToken", response.token);
-    return { user: response.user };
+    const { token, user } = await _callApi("/auth/register", "POST", userData);
+    localStorage.setItem("authToken", token);
+    return { user };
   },
 
   logout: async () => {
@@ -60,71 +43,70 @@ export const api = {
 
   getProfile: async () => {
     const token = localStorage.getItem("authToken");
-    if (!token) throw new Error("No authentication token found");
-    const response = await _callApi("/auth/profile", "GET", null, token);
-    localStorage.setItem("currentUser", JSON.stringify(response));
-    return { user: response };
+    if (!token) throw new Error("No auth token found");
+    const user = await _callApi("/auth/profile", "GET", null, token);
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    return { user };
   },
 
   // — Wallet —
-  getWalletBalance: async (userId) => {
+  getWalletBalance: async () => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/wallet/balance", "GET", null, token);
-    return { wallet: response };
+    const wallet = await _callApi("/wallet/balance", "GET", null, token);
+    return { wallet };
   },
 
-  addFunds: async (userId, amount) => {
+  addFunds: async (amount) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/wallet/add-funds", "POST", { amount }, token);
-    return { wallet: response };
+    const wallet = await _callApi("/wallet/add-funds", "POST", { amount }, token);
+    return { wallet };
   },
 
   // — Beneficiaries —
-  getBeneficiaries: async (userId) => {
+  getBeneficiaries: async () => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/beneficiaries/", "GET", null, token);
-    return { beneficiaries: response.beneficiaries };
+    const { beneficiaries } = await _callApi("/beneficiaries/", "GET", null, token);
+    return { beneficiaries };
   },
 
   addBeneficiary: async (beneficiaryData) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
-    return { beneficiary: response };
+    const beneficiary = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
+    return { beneficiary };
   },
 
   removeBeneficiary: async (id) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi(`/beneficiaries/${id}`, "DELETE", null, token);
-    return { id, ...response };
+    await _callApi(`/beneficiaries/${id}`, "DELETE", null, token);
+    return { id };
   },
 
   // — Transactions —
-  getTransactions: async (userId) => {
+  getTransactions: async () => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/transactions/", "GET", null, token);
-    return { transactions: response.transactions };
+    const { transactions } = await _callApi("/transactions/", "GET", null, token);
+    return { transactions };
   },
 
   sendMoney: async (sendData) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/transactions/send", "POST", sendData, token);
-    return {
-      wallet: response.transaction.wallet,
-      transaction: response.transaction,
-    };
+    const transaction = await _callApi("/transactions/send", "POST", sendData, token);
+    // pull fresh wallet after sending
+    const { wallet } = await api.getWalletBalance();
+    return { wallet, transaction };
   },
 
   // — Admin —
   getAllUsers: async () => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/admin/users", "GET", null, token);
-    return { users: response.users };
+    const { users } = await _callApi("/admin/users", "GET", null, token);
+    return { users };
   },
 
   getAllTransactions: async () => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/admin/transactions", "GET", null, token);
-    return { transactions: response.transactions };
+    const { transactions } = await _callApi("/admin/transactions", "GET", null, token);
+    return { transactions };
   },
 
   getUserDetails: async (userId) => {
@@ -132,13 +114,13 @@ export const api = {
     return await _callApi(`/admin/users/${userId}`, "GET", null, token);
   },
 
-  updateUserProfile: async (userId, userData) => {
+  updateUserProfile: async (userData) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/auth/profile", "PUT", userData, token);
-    return { user: response };
+    const user = await _callApi("/auth/profile", "PUT", userData, token);
+    return { user };
   },
 
-  changePassword: async (userId, oldPassword, newPassword) => {
+  changePassword: async (oldPassword, newPassword) => {
     const token = localStorage.getItem("authToken");
     return await _callApi(
       "/auth/profile/password",

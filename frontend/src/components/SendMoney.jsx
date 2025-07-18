@@ -17,7 +17,7 @@ const SendMoney = () => {
   const preSelectedBeneficiaryId = queryParams.get("beneficiaryId")
 
   const { user } = useSelector((state) => state.auth)
-  const { wallet } = useSelector((state) => state.wallet)
+  const { wallet, status: walletStatus } = useSelector((state) => state.wallet)
   const { beneficiaries, status: beneficiariesStatus } = useSelector((state) => state.beneficiaries)
   const { status: transactionStatus, error } = useSelector((state) => state.transactions)
 
@@ -30,6 +30,7 @@ const SendMoney = () => {
   const [transactionComplete, setTransactionComplete] = useState(false)
   const [transactionDetails, setTransactionDetails] = useState(null)
 
+  // load beneficiaries + wallet
   useEffect(() => {
     if (user) {
       dispatch(fetchBeneficiaries(user.id))
@@ -37,102 +38,79 @@ const SendMoney = () => {
     }
   }, [dispatch, user])
 
+  // auto-select via query param
   useEffect(() => {
-    if (preSelectedBeneficiaryId && beneficiaries.length > 0) {
-      const beneficiary = beneficiaries.find((b) => b.id === Number.parseInt(preSelectedBeneficiaryId))
-      if (beneficiary) {
-        setSelectedBeneficiary(beneficiary)
+    if (preSelectedBeneficiaryId && beneficiaries.length) {
+      const found = beneficiaries.find((b) => b.id === +preSelectedBeneficiaryId)
+      if (found) {
+        setSelectedBeneficiary(found)
         setStep(2)
       }
     }
   }, [preSelectedBeneficiaryId, beneficiaries])
 
   const validateStep1 = () => {
-    const errors = {}
-
-    if (!selectedBeneficiary) {
-      errors.beneficiary = "Please select a beneficiary"
-    }
-
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
+    const errs = {}
+    if (!selectedBeneficiary) errs.beneficiary = "Please select a beneficiary"
+    setFormErrors(errs)
+    return !Object.keys(errs).length
   }
 
   const validateStep2 = () => {
-    const errors = {}
-    const numAmount = Number.parseFloat(amount)
-    const fee = numAmount * 0.01 // 1% fee
-    const totalAmount = numAmount + fee
+    const errs = {}
+    const num = parseFloat(amount)
+    const fee = num * 0.01
+    const total = num + fee
 
-    if (!amount) {
-      errors.amount = "Amount is required"
-    } else if (isNaN(numAmount)) {
-      errors.amount = "Amount must be a number"
-    } else if (numAmount <= 0) {
-      errors.amount = "Amount must be greater than 0"
-    } else if (numAmount < 100) {
-      errors.amount = "Minimum amount is KES 100"
-    } else if (wallet && totalAmount > wallet.balance) {
-      errors.amount = "Insufficient funds (including fee)"
-    }
+    if (!amount) errs.amount = "Amount required"
+    else if (isNaN(num)) errs.amount = "Must be a number"
+    else if (num <= 0) errs.amount = "Must be > 0"
+    else if (num < 100) errs.amount = "Minimum KES 100"
+    else if (wallet?.balance != null && total > wallet.balance)
+      errs.amount = "Insufficient funds"
 
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
+    setFormErrors(errs)
+    return !Object.keys(errs).length
   }
 
-  const handleNextStep = () => {
-    if (step === 1 && validateStep1()) {
-      setStep(2)
-    } else if (step === 2 && validateStep2()) {
-      setStep(3)
-    }
+  const handleNext = () => {
+    if (step === 1 && validateStep1()) setStep(2)
+    else if (step === 2 && validateStep2()) setStep(3)
   }
+  const handleBack = () => setStep((s) => s - 1)
 
-  const handlePreviousStep = () => {
-    setStep(step - 1)
-  }
-
-  const handleBeneficiarySelect = (beneficiary) => {
-    setSelectedBeneficiary(beneficiary)
-    setFormErrors({})
-  }
-
-  const handleSendMoney = () => {
+  const handleSend = () => {
     setIsProcessing(true)
-
-    const numAmount = Number.parseFloat(amount)
+    const num = parseFloat(amount)
 
     dispatch(
       sendMoney({
         userId: user.id,
         beneficiaryId: selectedBeneficiary.id,
-        amount: numAmount,
+        amount: num,
         description: description || `Payment to ${selectedBeneficiary.name}`,
-      }),
+      })
     )
       .unwrap()
-      .then((result) => {
+      .then((res) => {
         setIsProcessing(false)
+        setTransactionDetails(res.transaction)
         setTransactionComplete(true)
-        setTransactionDetails(result.transaction)
+        // refresh wallet
+        dispatch(fetchWalletBalance(user.id))
       })
-      .catch(() => {
-        setIsProcessing(false)
-      })
+      .catch(() => setIsProcessing(false))
   }
 
-  const handleFinish = () => {
-    navigate("/dashboard")
-  }
+  const handleFinish = () => navigate("/dashboard")
 
-  if (beneficiariesStatus === "loading") {
+  if (beneficiariesStatus === "loading" || walletStatus === "loading")
     return <LoadingSpinner />
-  }
 
-  // Calculate fee and total
-  const numAmount = Number.parseFloat(amount) || 0
-  const fee = numAmount * 0.01 // 1% fee
-  const totalAmount = numAmount + fee
+  // calculations
+  const num = parseFloat(amount) || 0
+  const fee = num * 0.01
+  const total = num + fee
 
   return (
     <div className="send-money-container">
@@ -141,18 +119,14 @@ const SendMoney = () => {
       {wallet && <WalletCard wallet={wallet} />}
 
       <div className="stepper">
-        <div className={`step ${step >= 1 ? "active" : ""}`}>
-          <div className="step-number">1</div>
-          <div className="step-label">Recipient</div>
-        </div>
-        <div className={`step ${step >= 2 ? "active" : ""}`}>
-          <div className="step-number">2</div>
-          <div className="step-label">Amount</div>
-        </div>
-        <div className={`step ${step >= 3 ? "active" : ""}`}>
-          <div className="step-number">3</div>
-          <div className="step-label">Confirm</div>
-        </div>
+        {[1, 2, 3].map((n) => (
+          <div key={n} className={`step ${step >= n ? "active" : ""}`}>
+            <div className="step-number">{n}</div>
+            <div className="step-label">
+              {n === 1 ? "Recipient" : n === 2 ? "Amount" : "Confirm"}
+            </div>
+          </div>
+        ))}
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -161,41 +135,41 @@ const SendMoney = () => {
         {step === 1 && (
           <div className="step-content">
             <h2>Select Recipient</h2>
-
-            {beneficiaries.length > 0 ? (
+            {beneficiaries.length ? (
               <div className="beneficiaries-selection">
-                {beneficiaries.map((beneficiary) => (
+                {beneficiaries.map((b) => (
                   <div
-                    key={beneficiary.id}
-                    className={`beneficiary-select-card ${selectedBeneficiary?.id === beneficiary.id ? "selected" : ""}`}
-                    onClick={() => handleBeneficiarySelect(beneficiary)}
+                    key={b.id}
+                    className={`beneficiary-card ${
+                      selectedBeneficiary?.id === b.id ? "selected" : ""
+                    }`}
+                    onClick={() => {
+                      setSelectedBeneficiary(b)
+                      setFormErrors({})
+                    }}
                   >
-                    <div className="beneficiary-avatar">{beneficiary.name.charAt(0)}</div>
-                    <div className="beneficiary-info">
-                      <h3>{beneficiary.name}</h3>
-                      <p>{beneficiary.phone}</p>
+                    <div className="avatar">{b.name.charAt(0)}</div>
+                    <div className="info">
+                      <h3>{b.name}</h3>
+                      <p>{b.phone}</p>
                     </div>
-                    {selectedBeneficiary?.id === beneficiary.id && <div className="selected-indicator">✓</div>}
+                    {selectedBeneficiary?.id === b.id && <span>✓</span>}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="empty-state">
-                <p>You haven't added any beneficiaries yet.</p>
-                <a href="/beneficiaries" className="btn btn-primary">
-                  Add Beneficiary
-                </a>
+              <div className="empty">
+                <p>No beneficiaries yet.</p>
+                <button onClick={() => navigate("/beneficiaries")}>Add One</button>
               </div>
             )}
-
-            {formErrors.beneficiary && <div className="error-message">{formErrors.beneficiary}</div>}
-
+            {formErrors.beneficiary && (
+              <div className="error">{formErrors.beneficiary}</div>
+            )}
             {beneficiaries.length > 0 && (
-              <div className="form-actions">
-                <button type="button" className="btn btn-primary" onClick={handleNextStep}>
-                  Next
-                </button>
-              </div>
+              <button onClick={handleNext} className="btn btn-primary">
+                Next
+              </button>
             )}
           </div>
         )}
@@ -203,63 +177,58 @@ const SendMoney = () => {
         {step === 2 && (
           <div className="step-content">
             <h2>Enter Amount</h2>
-
             <div className="recipient-summary">
-              <div className="beneficiary-avatar">{selectedBeneficiary.name.charAt(0)}</div>
-              <div className="beneficiary-info">
-                <h3>Sending to: {selectedBeneficiary.name}</h3>
+              <div className="avatar">{selectedBeneficiary.name.charAt(0)}</div>
+              <div>
+                <h3>{selectedBeneficiary.name}</h3>
                 <p>{selectedBeneficiary.phone}</p>
               </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="amount">Amount (KES)</label>
+            <label>
+              Amount (KES)
               <input
                 type="number"
-                id="amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount"
+                placeholder="100.00"
                 min="100"
               />
-              {formErrors.amount && <span className="error">{formErrors.amount}</span>}
-            </div>
-
-            <div className="fee-calculation">
-              <div className="fee-row">
-                <span>Amount:</span>
+            </label>
+            {formErrors.amount && <div className="error">{formErrors.amount}</div>}
+            <div className="fee-details">
+              <div>
+                <span>Amount:</span>{" "}
                 <span>
-                  KES {numAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  KES {num.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
-              <div className="fee-row">
-                <span>Fee (1%):</span>
-                <span>KES {fee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div className="fee-row total">
-                <span>Total:</span>
+              <div>
+                <span>Fee (1%):</span>{" "}
                 <span>
-                  KES {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  KES {fee.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="total">
+                <span>Total:</span>{" "}
+                <span>
+                  KES {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="description">Description (Optional)</label>
+            <label>
+              Description (opt.)
               <input
                 type="text"
-                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What's this payment for?"
+                placeholder="Why are you sending?"
               />
-            </div>
-
-            <div className="form-actions">
-              <button type="button" className="btn btn-outline" onClick={handlePreviousStep}>
+            </label>
+            <div className="actions">
+              <button onClick={handleBack} className="btn btn-outline">
                 Back
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleNextStep}>
+              <button onClick={handleNext} className="btn btn-primary">
                 Next
               </button>
             </div>
@@ -269,44 +238,30 @@ const SendMoney = () => {
         {step === 3 && !isProcessing && !transactionComplete && (
           <div className="step-content">
             <h2>Confirm Transfer</h2>
-
-            <div className="confirmation-details">
-              <div className="detail-row">
-                <span>Recipient:</span>
-                <span>{selectedBeneficiary.name}</span>
-              </div>
-              <div className="detail-row">
-                <span>Phone Number:</span>
-                <span>{selectedBeneficiary.phone}</span>
-              </div>
-              <div className="detail-row">
-                <span>Amount:</span>
-                <span>KES {numAmount.toLocaleString()}</span>
-              </div>
-              <div className="detail-row">
-                <span>Fee (1%):</span>
-                <span>KES {fee.toLocaleString()}</span>
-              </div>
-              <div className="detail-row total">
-                <span>Total Amount:</span>
-                <span>KES {totalAmount.toLocaleString()}</span>
-              </div>
-              {description && (
-                <div className="detail-row">
-                  <span>Description:</span>
-                  <span>{description}</span>
-                </div>
-              )}
+            <div className="detail-row">
+              <span>Recipient:</span> <span>{selectedBeneficiary.name}</span>
             </div>
-
-            <div className="form-actions">
-              <button type="button" className="btn btn-outline" onClick={handlePreviousStep}>
+            <div className="detail-row">
+              <span>Phone:</span> <span>{selectedBeneficiary.phone}</span>
+            </div>
+            <div className="detail-row">
+              <span>Amount:</span>{" "}
+              <span>KES {num.toLocaleString()}</span>
+            </div>
+            <div className="detail-row">
+              <span>Fee:</span> <span>KES {fee.toLocaleString()}</span>
+            </div>
+            <div className="detail-row total">
+              <span>Total:</span>{" "}
+              <span>KES {total.toLocaleString()}</span>
+            </div>
+            <div className="actions">
+              <button onClick={handleBack} className="btn btn-outline">
                 Back
               </button>
               <button
-                type="button"
+                onClick={handleSend}
                 className="btn btn-primary"
-                onClick={handleSendMoney}
                 disabled={transactionStatus === "loading"}
               >
                 Confirm & Send
@@ -317,80 +272,37 @@ const SendMoney = () => {
 
         {isProcessing && (
           <div className="step-content">
-            <div className="processing">
-              <div className="spinner"></div>
-              <h2>Processing Transfer</h2>
-              <p>Please wait while we process your transfer...</p>
-            </div>
+            <LoadingSpinner />
+            <p>Processing your transfer…</p>
           </div>
         )}
 
         {transactionComplete && (
           <div className="step-content">
-            <div className="success">
-              <div className="success-icon">✓</div>
-              <h2>Transfer Successful!</h2>
-
-              <div className="transaction-receipt">
-                <div className="receipt-header">
-                  <h3>Transaction Receipt</h3>
-                  <p>Transaction ID: {transactionDetails.id}</p>
-                  <p>Date: {new Date(transactionDetails.createdAt).toLocaleString()}</p>
-                </div>
-
-                <div className="receipt-details">
-                  <div className="detail-row">
-                    <span>Recipient:</span>
-                    <span>{transactionDetails.recipientName}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span>Phone Number:</span>
-                    <span>{transactionDetails.recipientPhone}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span>Amount:</span>
-                    <span>KES {transactionDetails.amount.toLocaleString()}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span>Fee:</span>
-                    <span>KES {transactionDetails.fee.toLocaleString()}</span>
-                  </div>
-                  <div className="detail-row total">
-                    <span>Total Amount:</span>
-                    <span>KES {(transactionDetails.amount + transactionDetails.fee).toLocaleString()}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span>Status:</span>
-                    <span className="status-completed">{transactionDetails.status}</span>
-                  </div>
-                  {transactionDetails.description && (
-                    <div className="detail-row">
-                      <span>Description:</span>
-                      <span>{transactionDetails.description}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => {
-                    setStep(1)
-                    setSelectedBeneficiary(null)
-                    setAmount("")
-                    setDescription("")
-                    setTransactionComplete(false)
-                    setTransactionDetails(null)
-                  }}
-                >
-                  Send Another
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleFinish}>
-                  Back to Dashboard
-                </button>
-              </div>
+            <h2>Success!</h2>
+            <p>Txn ID: {transactionDetails?.id}</p>
+            <p>
+              Date:{" "}
+              {transactionDetails?.createdAt &&
+                new Date(transactionDetails.createdAt).toLocaleString()}
+            </p>
+            <div className="actions">
+              <button
+                onClick={() => {
+                  setStep(1)
+                  setSelectedBeneficiary(null)
+                  setAmount("")
+                  setDescription("")
+                  setTransactionComplete(false)
+                  setTransactionDetails(null)
+                }}
+                className="btn btn-outline"
+              >
+                Send Another
+              </button>
+              <button onClick={handleFinish} className="btn btn-primary">
+                Dashboard
+              </button>
             </div>
           </div>
         )}
