@@ -46,11 +46,14 @@ const TransactionItem = ({ transaction, detailed = false }) => {
 
   // description line
   const desc =
-    transaction.type === "deposit"
+    transaction.description?.trim() !== ""
+      ? transaction.description
+      : transaction.type === "deposit"
       ? "Deposit via M-Pesa"
       : transaction.type === "send"
       ? `Payment to ${transaction.recipient_name}`
       : `Received from ${transaction.recipient_name}`
+  
 
   return (
     <div className="transaction-item">
