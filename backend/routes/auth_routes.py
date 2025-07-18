@@ -1,3 +1,5 @@
+# backend/routes/auth_routes.py
+
 from flask import Blueprint, request, jsonify, g
 from controllers import auth_controller
 from functools import wraps
@@ -13,13 +15,11 @@ def login_required(f):
             return jsonify({"error": "Authorization token missing"}), 401
         
         try:
-            # In a real app, this would decode a JWT and verify it
-            # For this mock, we assume the token is the user ID
             token_type, token = auth_header.split(' ', 1)
             if token_type.lower() != 'bearer':
                 return jsonify({"error": "Invalid token type"}), 401
             
-            user_id = int(token) # Assuming token is user ID for simplicity
+            user_id = int(token)  # Assuming token is user ID for simplicity
             g.user_id = user_id
         except (ValueError, IndexError):
             return jsonify({"error": "Invalid token format"}), 401
@@ -32,7 +32,8 @@ def register():
     data = request.get_json()
     try:
         user = auth_controller.register_user(data)
-        return jsonify(user), 201
+        # Return both user and mock token so frontend can store it immediately
+        return jsonify({"user": user, "token": user['id']}), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
@@ -43,15 +44,15 @@ def login():
     password = data.get('password')
     try:
         user = auth_controller.login_user(email, password)
-        # In a real app, you'd return a JWT here
-        return jsonify({"user": user, "token": user['id']}), 200 # Return user ID as mock token
+        # Return same shape: user + mock token
+        return jsonify({"user": user, "token": user['id']}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    # For this stateless API, logout is just client-side token removal
+    # Stateless API: client just drops its token
     return jsonify({"message": "Logged out successfully"}), 200
 
 @auth_bp.route('/profile', methods=['GET'])
