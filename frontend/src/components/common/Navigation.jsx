@@ -56,19 +56,21 @@ export default function Navigation() {
                   <span className="nav-label">{item.label}</span>
                 </Link>
               ))}
+              
+              <div className="nav-user">
+                <div className="user-info">
+                  <div className="user-avatar">{initials}</div>
+                  <div className="user-details">
+                    <span className="user-name">{firstName} {lastName}</span>
+                    <span className="user-role">{user?.role}</span>
+                  </div>
+                </div>
+                <button className="logout-btn" onClick={handleLogout}>Logout</button>
+              </div>
             </div>
           </div>
 
-          <div className="nav-user">
-            <div className="user-info">
-              <div className="user-avatar">{initials}</div>
-              <div className="user-details">
-                <span className="user-name">{firstName} {lastName}</span>
-                <span className="user-role">{user?.role}</span>
-              </div>
-            </div>
-            <button className="logout-btn" onClick={handleLogout}>Logout</button>
-          </div>
+          
         </div>
       </nav>
 
