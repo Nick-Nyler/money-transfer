@@ -1,3 +1,5 @@
+# backend/controllers/auth_controller.py
+
 from models.user import User
 from models.wallet import Wallet
 from models.transaction import Transaction
@@ -56,8 +58,8 @@ def update_user_profile(user_id, data):
 
     # Prevent changing email or role via this endpoint
     user.first_name = data.get('firstName', user.first_name)
-    user.last_name = data.get('lastName', user.last_name)
-    user.phone = data.get('phone', user.phone)
+    user.last_name  = data.get('lastName',  user.last_name)
+    user.phone      = data.get('phone',     user.phone)
 
     db.session.commit()
     return user_schema.dump(user)
@@ -66,6 +68,10 @@ def change_user_password(user_id, old_password, new_password):
     user = User.query.get(user_id)
     if not user:
         raise ValueError("User not found")
+
+    # coerce inputs to strings to avoid int.encode() errors
+    old_password = str(old_password or "")
+    new_password = str(new_password or "")
 
     if not check_password_hash(user.password_hash, old_password):
         raise ValueError("Incorrect current password")
