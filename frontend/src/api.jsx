@@ -6,19 +6,26 @@ const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : "http://localhost:5000/api";
 
-// Helper for API calls
+// Helper to make API calls
 const _callApi = async (endpoint, method = "GET", data = null, token = null) => {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const config = {
     method,
     headers,
     body: data ? JSON.stringify(data) : null,
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Something went wrong");
-  return json;
+  };
+
+  try {
+    const res = await fetch(`${BASE_URL}${endpoint}`, config);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Something went wrong");
+    return json;
+  } catch (err) {
+    console.error("API call failed:", err);
+    throw err;
+  }
 };
 
 export const api = {
@@ -43,23 +50,24 @@ export const api = {
 
   getProfile: async () => {
     const token = localStorage.getItem("authToken");
-    if (!token) throw new Error("No auth token found");
+    if (!token) throw new Error("No authentication token found");
     const user = await _callApi("/auth/profile", "GET", null, token);
     localStorage.setItem("currentUser", JSON.stringify(user));
     return { user };
   },
 
   // — Wallet —
-  getWalletBalance: async () => {
+  getWalletBalance: async (userId) => {
     const token = localStorage.getItem("authToken");
-    const wallet = await _callApi("/wallet/balance", "GET", null, token);
-    return { wallet };
+    const response = await _callApi("/wallet/balance", "GET", null, token);
+    return { wallet: response };
   },
 
-  addFunds: async (amount) => {
+  addFunds: async (userId, amount) => {
     const token = localStorage.getItem("authToken");
-    const wallet = await _callApi("/wallet/add-funds", "POST", { amount }, token);
-    return { wallet };
+    // now correctly sends { amount } instead of mis‐positioned args
+    const response = await _callApi("/wallet/add-funds", "POST", { amount }, token);
+    return { wallet: response };
   },
 
   // — Beneficiaries —
@@ -71,8 +79,8 @@ export const api = {
 
   addBeneficiary: async (beneficiaryData) => {
     const token = localStorage.getItem("authToken");
-    const beneficiary = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
-    return { beneficiary };
+    const response = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
+    return { beneficiary: response };
   },
 
   removeBeneficiary: async (id) => {
@@ -91,8 +99,7 @@ export const api = {
   sendMoney: async (sendData) => {
     const token = localStorage.getItem("authToken");
     const transaction = await _callApi("/transactions/send", "POST", sendData, token);
-    // pull fresh wallet after sending
-    const { wallet } = await api.getWalletBalance();
+    const { wallet } = await api.getWalletBalance(sendData.userId);
     return { wallet, transaction };
   },
 
