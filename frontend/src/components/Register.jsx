@@ -7,8 +7,8 @@ import { register, clearError } from "../features/auth/authSlice"
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    first_name: "", // Changed from firstName
-    last_name: "", // Changed from lastName
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     password: "",
@@ -43,14 +43,12 @@ const Register = () => {
   const validateForm = () => {
     const errors = {}
 
-    if (!formData.first_name.trim()) {
-      // Changed from firstName
-      errors.first_name = "First name is required"
+    if (!formData.firstName.trim()) {
+      errors.firstName = "First name is required"
     }
 
-    if (!formData.last_name.trim()) {
-      // Changed from lastName
-      errors.last_name = "Last name is required"
+    if (!formData.lastName.trim()) {
+      errors.lastName = "Last name is required"
     }
 
     if (!formData.email.trim()) {
@@ -101,25 +99,15 @@ const Register = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="first_name">First Name</label> {/* Changed from firstName */}
-              <input
-                type="text"
-                id="first_name"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-              />{" "}
-              {/* Changed from firstName */}
-              {formErrors.first_name && <span className="error">{formErrors.first_name}</span>}{" "}
-              {/* Changed from firstName */}
+              <label htmlFor="firstName">First Name</label>
+              <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} />
+              {formErrors.firstName && <span className="error">{formErrors.firstName}</span>}
             </div>
 
             <div className="form-group">
-              <label htmlFor="last_name">Last Name</label> {/* Changed from lastName */}
-              <input type="text" id="last_name" name="last_name" value={formData.last_name} onChange={handleChange} />{" "}
-              {/* Changed from lastName */}
-              {formErrors.last_name && <span className="error">{formErrors.last_name}</span>}{" "}
-              {/* Changed from lastName */}
+              <label htmlFor="lastName">Last Name</label>
+              <input type="text" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} />
+              {formErrors.lastName && <span className="error">{formErrors.lastName}</span>}
             </div>
           </div>
 
