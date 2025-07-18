@@ -2442,3 +2442,33 @@
   font-size: 0.85rem; /* fits two letters */
   margin-right: 0.75rem;
 }
+
+
+/* ────────────── Admin sub-navbar ────────────── */
+.admin-nav {
+  position: fixed;
+  top: 60px; /* same height as your main .navigation */
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(135deg, #5a67d8 0%, #764ba2 100%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 999;
+}
+
+.admin-nav .nav-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 1rem;
+}
+
+.admin-nav .nav-link {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* push page content down so it’s never hidden */
+.content-container {
+  padding-top: 100px; /* 60 (main) + 40 (admin) */
+}
