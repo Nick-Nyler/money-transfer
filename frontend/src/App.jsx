@@ -1,7 +1,13 @@
+// src/App.jsx
 "use client"
 
 import { useEffect } from "react"
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate
+} from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 import LandingPage from "./components/LandingPage"
 import Login from "./components/Login"
@@ -15,6 +21,7 @@ import Transactions from "./components/Transactions"
 import AdminDashboard from "./components/admin/AdminDashboard"
 import UserManagement from "./components/admin/UserManagement"
 import TransactionMonitoring from "./components/admin/TransactionMonitoring"
+import PasswordChanged from "./components/PasswordChanged"      // ← new
 import Navigation from "./components/common/Navigation"
 import { checkAuth } from "./features/auth/authSlice"
 import "./App.css"
@@ -32,11 +39,9 @@ function App() {
     if (!isAuthenticated) {
       return <Navigate to="/login" />
     }
-
     if (requireAdmin && user?.role !== "admin") {
       return <Navigate to="/dashboard" />
     }
-
     return children
   }
 
@@ -46,10 +51,33 @@ function App() {
         {isAuthenticated && <Navigation />}
         <div className="content-container">
           <Routes>
-            <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
-            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-            <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} />
+            {/* Public */}
+            <Route
+              path="/"
+              element={
+                !isAuthenticated
+                  ? <LandingPage />
+                  : <Navigate to="/dashboard" />
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                !isAuthenticated
+                  ? <Login />
+                  : <Navigate to="/dashboard" />
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                !isAuthenticated
+                  ? <Register />
+                  : <Navigate to="/dashboard" />
+              }
+            />
 
+            {/* Protected */}
             <Route
               path="/dashboard"
               element={
@@ -58,7 +86,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/profile"
               element={
@@ -67,7 +94,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/add-funds"
               element={
@@ -76,7 +102,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/beneficiaries"
               element={
@@ -85,7 +110,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/send-money"
               element={
@@ -94,7 +118,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/transactions"
               element={
@@ -104,6 +127,7 @@ function App() {
               }
             />
 
+            {/* Admin */}
             <Route
               path="/admin"
               element={
@@ -112,7 +136,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/admin/users"
               element={
@@ -121,7 +144,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/admin/transactions"
               element={
@@ -131,6 +153,17 @@ function App() {
               }
             />
 
+            {/* New: Password Changed confirmation */}
+            <Route
+              path="/password-changed"
+              element={
+                <ProtectedRoute>
+                  <PasswordChanged />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch All */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>

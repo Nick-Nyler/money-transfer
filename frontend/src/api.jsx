@@ -127,7 +127,8 @@ export const api = {
     return { user };
   },
 
-  changePassword: async (oldPassword, newPassword) => {
+  // PATCH: Take an object not two args!
+  changePassword: async ({ oldPassword, newPassword }) => {
     const token = localStorage.getItem("authToken");
     return await _callApi(
       "/auth/profile/password",

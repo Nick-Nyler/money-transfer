@@ -1,4 +1,5 @@
 // src/features/auth/authSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../api";
 
@@ -61,7 +62,10 @@ export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async ({ oldPassword, newPassword }, { rejectWithValue }) => {
     try {
-      return await api.changePassword(oldPassword, newPassword);
+      // 🔥 Pass a single object to match api.changePassword signature
+      const res = await api.changePassword({ oldPassword, newPassword });
+      if (res.error) throw new Error(res.error);
+      return res.message || "Password changed successfully";
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -73,6 +77,7 @@ const initialState = {
   isAuthenticated: false,
   status: "idle",
   error: null,
+  success: null, // track success messages
 };
 
 const authSlice = createSlice({
@@ -81,76 +86,99 @@ const authSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+      state.success = null;
     },
   },
-  extraReducers: (b) => {
-    b
+  extraReducers: (builder) => {
+    builder
       // login
-      .addCase(login.pending, (s) => { s.status = "loading"; s.error = null })
-      .addCase(login.fulfilled, (s, a) => {
-        s.status = "succeeded";
-        s.user = a.payload.user;
-        s.isAuthenticated = true;
+      .addCase(login.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.success = null;
       })
-      .addCase(login.rejected, (s, a) => {
-        s.status = "failed";
-        s.error = a.payload;
+      .addCase(login.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        state.user = payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(login.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.error = payload;
       })
 
       // register
-      .addCase(register.pending, (s) => { s.status = "loading"; s.error = null })
-      .addCase(register.fulfilled, (s, a) => {
-        s.status = "succeeded";
-        s.user = a.payload.user;
-        s.isAuthenticated = true;
+      .addCase(register.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.success = null;
       })
-      .addCase(register.rejected, (s, a) => {
-        s.status = "failed";
-        s.error = a.payload;
+      .addCase(register.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        state.user = payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(register.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.error = payload;
       })
 
       // logout
-      .addCase(logout.fulfilled, (s) => {
-        s.user = null;
-        s.isAuthenticated = false;
-        s.status = "idle";
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.status = "idle";
+        state.error = null;
+        state.success = null;
       })
 
       // checkAuth
-      .addCase(checkAuth.pending, (s) => { s.status = "loading" })
-      .addCase(checkAuth.fulfilled, (s, a) => {
-        s.status = "succeeded";
-        if (a.payload.user) {
-          s.user = a.payload.user;
-          s.isAuthenticated = true;
+      .addCase(checkAuth.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(checkAuth.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        if (payload.user) {
+          state.user = payload.user;
+          state.isAuthenticated = true;
         }
       })
-      .addCase(checkAuth.rejected, (s, a) => {
-        s.status = "failed";
-        s.user = null;
-        s.isAuthenticated = false;
-        s.error = a.payload;
+      .addCase(checkAuth.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = payload;
       })
 
       // updateProfile
-      .addCase(updateProfile.pending, (s) => { s.status = "loading"; s.error = null })
-      .addCase(updateProfile.fulfilled, (s, a) => {
-        s.status = "succeeded";
-        s.user = a.payload.user;
+      .addCase(updateProfile.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.success = null;
       })
-      .addCase(updateProfile.rejected, (s, a) => {
-        s.status = "failed";
-        s.error = a.payload;
+      .addCase(updateProfile.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        state.user = payload.user;
+      })
+      .addCase(updateProfile.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.error = payload;
       })
 
       // changePassword
-      .addCase(changePassword.pending, (s) => { s.status = "loading"; s.error = null })
-      .addCase(changePassword.fulfilled, (s) => {
-        s.status = "succeeded";
+      .addCase(changePassword.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.success = null;
       })
-      .addCase(changePassword.rejected, (s, a) => {
-        s.status = "failed";
-        s.error = a.payload;
+      .addCase(changePassword.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        state.success = payload;  // backend message
+      })
+      .addCase(changePassword.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.error = payload;
+        state.success = null;
       });
   },
 });
