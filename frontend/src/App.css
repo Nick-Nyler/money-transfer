@@ -1617,7 +1617,7 @@
   }
 
   .wallet-card {
-    padding: 1.5rem;
+    padding: 0.8rem;
   }
 
   .wallet-balance .amount {
@@ -2455,6 +2455,12 @@
   z-index: 999;
 }
 
+.admin-nav .nav-links{
+  display: flex;
+  flex-direction: row;
+  
+}
+
 .admin-nav .nav-container {
   display: flex;
   align-items: center;
@@ -2471,3 +2477,24 @@
 .content-container {
   padding-top: 100px; /* 60 (main) + 40 (admin) */
 }
+
+@media (max-width: 480px) {
+  .admin-nav .nav-link {
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  .admin-nav .nav-label {
+    display: none;
+  }
+
+  .admin-nav .nav-icon {
+    font-size: 1.2rem;
+  }
+
+  .admin-nav .nav-links {
+    flex: 1;
+    justify-content: space-around;
+  }
+}
+
