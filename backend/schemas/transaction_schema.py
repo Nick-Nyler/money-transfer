@@ -4,6 +4,7 @@ from models.user import User
 from marshmallow import fields
 
 class TransactionSchema(ma.SQLAlchemyAutoSchema):
+    user_id = fields.Integer()  # <-- add this line
     user_name = fields.Method("get_user_name")
     user_email = fields.Method("get_user_email")
     created_at_formatted = fields.Method("get_created_at_formatted")
