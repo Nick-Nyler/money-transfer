@@ -65,9 +65,31 @@ export const api = {
 
   addFunds: async (userId, amount) => {
     const token = localStorage.getItem("authToken");
-    // now correctly sends { amount } instead of mis‐positioned args
     const response = await _callApi("/wallet/add-funds", "POST", { amount }, token);
     return { wallet: response };
+  },
+
+  // Download CSV statement
+  downloadStatement: async () => {
+    const token = localStorage.getItem("authToken");
+    const res = await fetch(`${BASE_URL}/wallet/statement`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to download statement");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "statement.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+    return true;
   },
 
   // — Beneficiaries —
@@ -127,7 +149,6 @@ export const api = {
     return { user };
   },
 
-  // PATCH: Take an object not two args!
   changePassword: async ({ oldPassword, newPassword }) => {
     const token = localStorage.getItem("authToken");
     return await _callApi(
