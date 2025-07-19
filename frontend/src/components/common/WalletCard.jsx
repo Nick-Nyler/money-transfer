@@ -1,6 +1,9 @@
+// src/components/common/WalletCard.jsx
 "use client"
-import { useEffect, useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+
+import { useState, useEffect } from "react"
+import { Eye, EyeOff, Download } from "lucide-react"
+import { api } from "../../api"
 
 const WalletCard = ({ wallet }) => {
   const [showBalance, setShowBalance] = useState(() => {
@@ -15,6 +18,11 @@ const WalletCard = ({ wallet }) => {
       localStorage.setItem("showBalance", JSON.stringify(updated))
       return updated
     })
+  }
+
+  const handleDownload = () => {
+    api.downloadStatement()
+      .catch(err => alert("Could not download statement: " + err.message))
   }
 
   if (!wallet) {
@@ -54,6 +62,9 @@ const WalletCard = ({ wallet }) => {
 
         <div className="wallet-footer">
           <small>Available Balance</small>
+          <button className="btn btn-outline" onClick={handleDownload}>
+            <Download size={16} style={{ marginRight: '4px' }} /> Download Statement
+          </button>
         </div>
       </div>
     </div>
