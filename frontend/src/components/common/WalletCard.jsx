@@ -1,6 +1,22 @@
 "use client"
+import { useEffect, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 
 const WalletCard = ({ wallet }) => {
+  const [showBalance, setShowBalance] = useState(() => {
+    // Read from localStorage on first load
+    const saved = localStorage.getItem("showBalance")
+    return saved !== null ? JSON.parse(saved) : true
+  })
+
+  const toggleBalance = () => {
+    setShowBalance(prev => {
+      const updated = !prev
+      localStorage.setItem("showBalance", JSON.stringify(updated))
+      return updated
+    })
+  }
+
   if (!wallet) {
     return (
       <div className="wallet-card loading">
@@ -21,10 +37,21 @@ const WalletCard = ({ wallet }) => {
           <h3>Wallet Balance</h3>
           <div className="wallet-icon">💳</div>
         </div>
+
         <div className="wallet-balance">
           <span className="currency">{wallet.currency}</span>
-          <span className="amount">{wallet.balance.toLocaleString()}</span>
+          <span className={`amount ${!showBalance ? "blurred" : ""}`}>
+            {wallet.balance.toLocaleString()}
+          </span>
+          <button
+            className="toggle-visibility"
+            onClick={toggleBalance}
+            aria-label="Toggle Balance Visibility"
+          >
+            {showBalance ? <Eye size={20} /> : <EyeOff size={20} />}
+          </button>
         </div>
+
         <div className="wallet-footer">
           <small>Available Balance</small>
         </div>
