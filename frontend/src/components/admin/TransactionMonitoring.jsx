@@ -94,31 +94,29 @@ const TransactionMonitoring = () => {
     }
 
     // User filter
-    if (filters.userId !== "all" && transaction.userId !== Number.parseInt(filters.userId)) {
+    const userId = transaction.user_id || transaction.userId
+    if (filters.userId !== "all" && userId !== Number.parseInt(filters.userId)) {
       return false
     }
 
     // Date range filter
-    if (filters.dateRange !== "all") {
-      const transactionDate = new Date(transaction.createdAt)
+    const dateVal = transaction.created_at || transaction.createdAt
+    if (filters.dateRange !== "all" && dateVal) {
+      const transactionDate = new Date(dateVal)
       const today = new Date()
-
       if (filters.dateRange === "today") {
         const isToday =
           transactionDate.getDate() === today.getDate() &&
           transactionDate.getMonth() === today.getMonth() &&
           transactionDate.getFullYear() === today.getFullYear()
-
         if (!isToday) return false
       } else if (filters.dateRange === "week") {
         const weekAgo = new Date()
         weekAgo.setDate(today.getDate() - 7)
-
         if (transactionDate < weekAgo) return false
       } else if (filters.dateRange === "month") {
         const monthAgo = new Date()
         monthAgo.setMonth(today.getMonth() - 1)
-
         if (transactionDate < monthAgo) return false
       }
     }
@@ -126,13 +124,18 @@ const TransactionMonitoring = () => {
     // Search term filter
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase()
-      const user = users.find((u) => u.id === transaction.userId)
-      const userName = user ? `${user.firstName} ${user.lastName}`.toLowerCase() : ""
-      const descriptionMatch = transaction.description?.toLowerCase().includes(searchLower)
-      const recipientMatch = transaction.recipientName?.toLowerCase().includes(searchLower)
-      const amountMatch = transaction.amount.toString().includes(searchLower)
-      const userMatch = userName.includes(searchLower)
-
+      // Prefer backend-supplied user_name, fallback to users array
+      const userName =
+        transaction.user_name ||
+        (users.find((u) => u.id === userId)
+          ? `${users.find((u) => u.id === userId).firstName} ${users.find((u) => u.id === userId).lastName}`
+          : "")
+      const descriptionMatch = (transaction.description || "").toLowerCase().includes(searchLower)
+      const recipientMatch = (transaction.recipient_name || transaction.recipientName || "")
+        .toLowerCase()
+        .includes(searchLower)
+      const amountMatch = (transaction.amount || "").toString().includes(searchLower)
+      const userMatch = userName.toLowerCase().includes(searchLower)
       if (!descriptionMatch && !recipientMatch && !amountMatch && !userMatch) {
         return false
       }
@@ -143,14 +146,16 @@ const TransactionMonitoring = () => {
 
   // Apply sorting
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    const aDate = new Date(a.created_at || a.createdAt)
+    const bDate = new Date(b.created_at || b.createdAt)
     if (sorting.field === "createdAt") {
-      return sorting.direction === "asc"
-        ? new Date(a.createdAt) - new Date(b.createdAt)
-        : new Date(b.createdAt) - new Date(a.createdAt)
+      return sorting.direction === "asc" ? aDate - bDate : bDate - aDate
     } else if (sorting.field === "amount") {
       return sorting.direction === "asc" ? a.amount - b.amount : b.amount - a.amount
     } else if (sorting.field === "userId") {
-      return sorting.direction === "asc" ? a.userId - b.userId : b.userId - a.userId
+      const aId = a.user_id || a.userId
+      const bId = b.user_id || b.userId
+      return sorting.direction === "asc" ? aId - bId : bId - aId
     }
     return 0
   })
@@ -173,12 +178,16 @@ const TransactionMonitoring = () => {
 
         <div className="stat-card">
           <h3>Total Volume</h3>
-          <p className="stat-value">KES {allTransactions.reduce((sum, t) => sum + t.amount, 0).toLocaleString()}</p>
+          <p className="stat-value">
+            KES {allTransactions.reduce((sum, t) => sum + Number(t.amount), 0).toLocaleString()}
+          </p>
         </div>
 
         <div className="stat-card">
           <h3>Total Fees</h3>
-          <p className="stat-value">KES {allTransactions.reduce((sum, t) => sum + t.fee, 0).toLocaleString()}</p>
+          <p className="stat-value">
+            KES {allTransactions.reduce((sum, t) => sum + Number(t.fee), 0).toLocaleString()}
+          </p>
         </div>
 
         <div className="stat-card">
@@ -279,28 +288,41 @@ const TransactionMonitoring = () => {
             </thead>
             <tbody>
               {sortedTransactions.map((transaction) => {
-                const user = users.find((u) => u.id === transaction.userId)
+                // Prefer backend-supplied user_name, fallback to users array
+                const userId = transaction.user_id || transaction.userId
+                const userName =
+                  transaction.user_name ||
+                  (users.find((u) => u.id === userId)
+                    ? `${users.find((u) => u.id === userId).firstName} ${users.find((u) => u.id === userId).lastName}`
+                    : "Unknown")
+                const formattedDate = transaction.created_at_formatted ||
+                  (transaction.created_at
+                    ? new Date(transaction.created_at).toLocaleString()
+                    : transaction.createdAt
+                    ? new Date(transaction.createdAt).toLocaleString()
+                    : "-")
+
                 return (
                   <tr key={transaction.id}>
                     <td>{transaction.id}</td>
-                    <td>{user ? `${user.firstName} ${user.lastName}` : "Unknown"}</td>
+                    <td>{userName}</td>
                     <td>
                       <span className={`transaction-type ${transaction.type}`}>{transaction.type}</span>
                     </td>
-                    <td>KES {transaction.amount.toLocaleString()}</td>
-                    <td>KES {transaction.fee.toLocaleString()}</td>
+                    <td>KES {Number(transaction.amount).toLocaleString()}</td>
+                    <td>KES {Number(transaction.fee).toLocaleString()}</td>
                     <td>
-                      {transaction.recipientName ? (
+                      {transaction.recipient_name || transaction.recipientName ? (
                         <div>
-                          <div>{transaction.recipientName}</div>
-                          <small>{transaction.recipientPhone}</small>
+                          <div>{transaction.recipient_name || transaction.recipientName}</div>
+                          <small>{transaction.recipient_phone || transaction.recipientPhone}</small>
                         </div>
                       ) : (
                         "-"
                       )}
                     </td>
                     <td>{transaction.description || "-"}</td>
-                    <td>{new Date(transaction.createdAt).toLocaleString()}</td>
+                    <td>{formattedDate}</td>
                     <td>
                       <span className={`status-badge ${transaction.status}`}>{transaction.status}</span>
                     </td>

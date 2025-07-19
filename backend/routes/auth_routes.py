@@ -1,6 +1,6 @@
 # backend/routes/auth_routes.py
 
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from controllers import auth_controller
 from functools import wraps
 
@@ -77,9 +77,20 @@ def update_profile():
 @auth_bp.route('/profile/password', methods=['PUT'])
 @login_required
 def change_password():
-    data = request.get_json()
-    old_password = data.get('oldPassword')
-    new_password = data.get('newPassword')
+    # ensure we always have a dict
+    data = request.get_json() or {}
+
+    # require both fields
+    if 'oldPassword' not in data or 'newPassword' not in data:
+        return jsonify({"error": "Missing oldPassword or newPassword"}), 400
+
+    # coerce to strings
+    old_password = str(data['oldPassword'])
+    new_password = str(data['newPassword'])
+
+    # DEBUG log so you can see exactly what's arriving
+    current_app.logger.debug(f"change_password payload: old={old_password!r}, new={new_password!r}")
+
     try:
         result = auth_controller.change_user_password(g.user_id, old_password, new_password)
         return jsonify(result), 200
