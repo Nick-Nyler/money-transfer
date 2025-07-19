@@ -1,5 +1,3 @@
-# backend/controllers/auth_controller.py
-
 from models.user import User
 from models.wallet import Wallet
 from models.transaction import Transaction
@@ -32,7 +30,6 @@ def register_user(data):
     db.session.add(new_user)
     db.session.commit()
 
-    # Create a wallet for the new user
     new_wallet = Wallet(user_id=new_user.id, balance=0, currency="KES")
     db.session.add(new_wallet)
     db.session.commit()
@@ -56,7 +53,6 @@ def update_user_profile(user_id, data):
     if not user:
         raise ValueError("User not found")
 
-    # Prevent changing email or role via this endpoint
     user.first_name = data.get('firstName', user.first_name)
     user.last_name  = data.get('lastName',  user.last_name)
     user.phone      = data.get('phone',     user.phone)
@@ -69,12 +65,11 @@ def change_user_password(user_id, old_password, new_password):
     if not user:
         raise ValueError("User not found")
 
-    # coerce inputs to strings to avoid int.encode() errors
-    old_password = str(old_password or "")
-    new_password = str(new_password or "")
-
     if not check_password_hash(user.password_hash, old_password):
         raise ValueError("Incorrect current password")
+
+    if not new_password or len(new_password) < 6:
+        raise ValueError("New password must be at least 6 characters")
 
     user.password_hash = generate_password_hash(new_password)
     db.session.commit()

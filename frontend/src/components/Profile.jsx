@@ -3,11 +3,13 @@
 
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { updateProfile, changePassword } from "../features/auth/authSlice";
+import { updateProfile, changePassword, clearError } from "../features/auth/authSlice";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const dispatch = useDispatch();
-  const { user, status, error } = useSelector((s) => s.auth);
+  const navigate = useNavigate();
+  const { user, status, error, success } = useSelector((s) => s.auth);
 
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || "",
@@ -19,23 +21,31 @@ const Profile = () => {
     newPassword:     "",
     confirmPassword: "",
   });
-  const [activeTab, setActiveTab]             = useState("profile");
-  const [profileSuccess, setProfileSuccess]   = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [formErrors, setFormErrors]           = useState({});
+  const [activeTab, setActiveTab]           = useState("profile");
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [formErrors, setFormErrors]         = useState({});
+
+  // Clear errors and success when switching tabs
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    dispatch(clearError());
+    setFormErrors({});
+    setProfileSuccess(false);
+  };
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfileData((p) => ({ ...p, [name]: value }));
     if (profileSuccess) setProfileSuccess(false);
     if (formErrors[name])  setFormErrors((f) => ({ ...f, [name]: "" }));
+    dispatch(clearError());
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData((p) => ({ ...p, [name]: value }));
-    if (passwordSuccess) setPasswordSuccess(false);
     if (formErrors[name]) setFormErrors((f) => ({ ...f, [name]: "" }));
+    dispatch(clearError());
   };
 
   const validateProfileForm = () => {
@@ -44,7 +54,7 @@ const Profile = () => {
     if (!profileData.lastName.trim())  errs.lastName  = "Last name is required";
     if (!profileData.phone.trim()) {
       errs.phone = "Phone number is required";
-    } else if (!/^\+?\d{10,15}$/.test(profileData.phone.replace(/\s/g, ""))) {
+    } else if (!/^[+\d]{10,15}$/.test(profileData.phone.replace(/\s/g, ""))) {
       errs.phone = "Phone number is invalid";
     }
     setFormErrors(errs);
@@ -53,8 +63,8 @@ const Profile = () => {
 
   const validatePasswordForm = () => {
     const errs = {};
-    if (!passwordData.oldPassword)    errs.oldPassword     = "Current password is required";
-    if (!passwordData.newPassword)    errs.newPassword     = "New password is required";
+    if (!passwordData.oldPassword)      errs.oldPassword     = "Current password is required";
+    if (!passwordData.newPassword)      errs.newPassword     = "New password is required";
     else if (passwordData.newPassword.length < 6)
       errs.newPassword = "Password must be at least 6 characters";
     if (passwordData.newPassword !== passwordData.confirmPassword)
@@ -75,16 +85,13 @@ const Profile = () => {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (!validatePasswordForm()) return;
-    dispatch(
-      changePassword({
-        oldPassword: passwordData.oldPassword,
-        newPassword: passwordData.newPassword,
-      })
-    )
+    dispatch(changePassword({
+      oldPassword: passwordData.oldPassword,
+      newPassword: passwordData.newPassword,
+    }))
       .unwrap()
       .then(() => {
-        setPasswordSuccess(true);
-        setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" });
+        navigate("/password-changed");
       })
       .catch(() => {});
   };
@@ -92,31 +99,37 @@ const Profile = () => {
   return (
     <div className="profile-container">
       <h1>Profile Settings</h1>
+
       <div className="profile-tabs">
         <button
           className={`tab-button ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => setActiveTab("profile")}
+          onClick={() => handleTabChange("profile")}
         >
           Personal Information
         </button>
         <button
           className={`tab-button ${activeTab === "password" ? "active" : ""}`}
-          onClick={() => setActiveTab("password")}
+          onClick={() => handleTabChange("password")}
         >
           Change Password
         </button>
       </div>
+
       <div className="profile-content">
         {activeTab === "profile" ? (
           <form onSubmit={handleProfileSubmit} className="profile-form-container">
             <h2>Personal Information</h2>
             {profileSuccess && <div className="success-message">Profile updated!</div>}
-            {error && <div className="error-message">{error}</div>}
+            {error          && <div className="error-message">{error}</div>}
+
+            {/* Email (read‑only) */}
             <div className="form-group">
               <label>Email</label>
               <input type="email" value={user?.email || ""} disabled className="disabled" />
               <small>Email cannot be changed</small>
             </div>
+
+            {/* First & Last Name */}
             <div className="form-row">
               <div className="form-group">
                 <label>First Name</label>
@@ -125,7 +138,9 @@ const Profile = () => {
                   value={profileData.firstName}
                   onChange={handleProfileChange}
                 />
-                {formErrors.firstName && <span className="error">{formErrors.firstName}</span>}
+                {formErrors.firstName && (
+                  <span className="error">{formErrors.firstName}</span>
+                )}
               </div>
               <div className="form-group">
                 <label>Last Name</label>
@@ -134,9 +149,13 @@ const Profile = () => {
                   value={profileData.lastName}
                   onChange={handleProfileChange}
                 />
-                {formErrors.lastName && <span className="error">{formErrors.lastName}</span>}
+                {formErrors.lastName && (
+                  <span className="error">{formErrors.lastName}</span>
+                )}
               </div>
             </div>
+
+            {/* Phone Number */}
             <div className="form-group">
               <label>Phone Number</label>
               <input
@@ -147,15 +166,20 @@ const Profile = () => {
               />
               {formErrors.phone && <span className="error">{formErrors.phone}</span>}
             </div>
-            <button type="submit" className="btn btn-primary" disabled={status === "loading"}>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={status === "loading"}
+            >
               {status === "loading" ? "Saving..." : "Save Changes"}
             </button>
           </form>
         ) : (
           <form onSubmit={handlePasswordSubmit} className="profile-form-container">
             <h2>Change Password</h2>
-            {passwordSuccess && <div className="success-message">Password changed!</div>}
             {error && <div className="error-message">{error}</div>}
+
             <div className="form-group">
               <label>Current Password</label>
               <input
@@ -164,8 +188,11 @@ const Profile = () => {
                 value={passwordData.oldPassword}
                 onChange={handlePasswordChange}
               />
-              {formErrors.oldPassword && <span className="error">{formErrors.oldPassword}</span>}
+              {formErrors.oldPassword && (
+                <span className="error">{formErrors.oldPassword}</span>
+              )}
             </div>
+
             <div className="form-group">
               <label>New Password</label>
               <input
@@ -174,8 +201,11 @@ const Profile = () => {
                 value={passwordData.newPassword}
                 onChange={handlePasswordChange}
               />
-              {formErrors.newPassword && <span className="error">{formErrors.newPassword}</span>}
+              {formErrors.newPassword && (
+                <span className="error">{formErrors.newPassword}</span>
+              )}
             </div>
+
             <div className="form-group">
               <label>Confirm New Password</label>
               <input
@@ -188,7 +218,12 @@ const Profile = () => {
                 <span className="error">{formErrors.confirmPassword}</span>
               )}
             </div>
-            <button type="submit" className="btn btn-primary" disabled={status === "loading"}>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={status === "loading"}
+            >
               {status === "loading" ? "Changing..." : "Change Password"}
             </button>
           </form>

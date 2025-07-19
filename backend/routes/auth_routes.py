@@ -1,5 +1,3 @@
-# backend/routes/auth_routes.py
-
 from flask import Blueprint, request, jsonify, g, current_app
 from controllers import auth_controller
 from functools import wraps
@@ -32,7 +30,6 @@ def register():
     data = request.get_json()
     try:
         user = auth_controller.register_user(data)
-        # Return both user and mock token so frontend can store it immediately
         return jsonify({"user": user, "token": user['id']}), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -44,7 +41,6 @@ def login():
     password = data.get('password')
     try:
         user = auth_controller.login_user(email, password)
-        # Return same shape: user + mock token
         return jsonify({"user": user, "token": user['id']}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
@@ -52,7 +48,6 @@ def login():
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    # Stateless API: client just drops its token
     return jsonify({"message": "Logged out successfully"}), 200
 
 @auth_bp.route('/profile', methods=['GET'])
@@ -77,18 +72,15 @@ def update_profile():
 @auth_bp.route('/profile/password', methods=['PUT'])
 @login_required
 def change_password():
-    # ensure we always have a dict
-    data = request.get_json() or {}
+    # 🔑 force JSON parsing on PUT
+    data = request.get_json(force=True) or {}
 
-    # require both fields
     if 'oldPassword' not in data or 'newPassword' not in data:
         return jsonify({"error": "Missing oldPassword or newPassword"}), 400
 
-    # coerce to strings
     old_password = str(data['oldPassword'])
     new_password = str(data['newPassword'])
 
-    # DEBUG log so you can see exactly what's arriving
     current_app.logger.debug(f"change_password payload: old={old_password!r}, new={new_password!r}")
 
     try:
