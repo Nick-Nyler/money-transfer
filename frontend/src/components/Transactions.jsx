@@ -5,6 +5,9 @@ import { useDispatch, useSelector } from "react-redux"
 import { fetchTransactions, setFilters, setSorting } from "../features/transactions/transactionsSlice"
 import TransactionItem from "./common/TransactionItem"
 import LoadingSpinner from "./common/LoadingSpinner"
+import { Download } from "lucide-react"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 
 const Transactions = () => {
   const dispatch = useDispatch()
@@ -25,8 +28,7 @@ const Transactions = () => {
   }
 
   const handleSortChange = (e) => {
-    const { value } = e.target
-    const [field, direction] = value.split("-")
+    const [field, direction] = e.target.value.split("-")
     dispatch(setSorting({ field, direction }))
   }
 
@@ -52,54 +54,14 @@ const Transactions = () => {
     )
   }
 
-  // Apply filters and sorting
   const filteredTransactions = transactions.filter((transaction) => {
-    // Type filter
-    if (filters.type !== "all" && transaction.type !== filters.type) {
+    if (filters.type !== "all" && transaction.type !== filters.type) return false
+    if (filters.searchTerm && !transaction.description?.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
       return false
     }
-
-    // Date range filter
-    if (filters.dateRange !== "all") {
-      const transactionDate = new Date(transaction.createdAt)
-      const today = new Date()
-
-      if (filters.dateRange === "today") {
-        const isToday =
-          transactionDate.getDate() === today.getDate() &&
-          transactionDate.getMonth() === today.getMonth() &&
-          transactionDate.getFullYear() === today.getFullYear()
-
-        if (!isToday) return false
-      } else if (filters.dateRange === "week") {
-        const weekAgo = new Date()
-        weekAgo.setDate(today.getDate() - 7)
-
-        if (transactionDate < weekAgo) return false
-      } else if (filters.dateRange === "month") {
-        const monthAgo = new Date()
-        monthAgo.setMonth(today.getMonth() - 1)
-
-        if (transactionDate < monthAgo) return false
-      }
-    }
-
-    // Search term filter
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase()
-      const descriptionMatch = transaction.description?.toLowerCase().includes(searchLower)
-      const recipientMatch = transaction.recipientName?.toLowerCase().includes(searchLower)
-      const amountMatch = transaction.amount.toString().includes(searchLower)
-
-      if (!descriptionMatch && !recipientMatch && !amountMatch) {
-        return false
-      }
-    }
-
     return true
   })
 
-  // Apply sorting
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     if (sorting.field === "createdAt") {
       return sorting.direction === "asc"
@@ -110,6 +72,31 @@ const Transactions = () => {
     }
     return 0
   })
+
+  const handleDownload = () => {
+    const doc = new jsPDF()
+
+    doc.setFontSize(18)
+    doc.text("Transaction Statement", 14, 22)
+    doc.setFontSize(12)
+    doc.text(`User: ${user?.fullName || user?.email || "Unknown"}`, 14, 30)
+
+    const tableData = sortedTransactions.map((txn, index) => [
+      index + 1,
+      txn.type,
+      txn.amount.toFixed(2),
+      txn.description || "N/A",
+      new Date(txn.createdAt).toLocaleString(),
+    ])
+
+    autoTable(doc, {
+      startY: 36,
+      head: [["#", "Type", "Amount", "Description", "Date"]],
+      body: tableData,
+    })
+
+    doc.save("transaction_statement.pdf")
+  }
 
   if (status === "loading") {
     return <LoadingSpinner />
@@ -129,9 +116,7 @@ const Transactions = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <button type="submit" className="btn btn-primary btn-sm">
-            Search
-          </button>
+          <button type="submit" className="btn btn-primary btn-sm">Search</button>
         </form>
 
         <div className="filter-controls">
@@ -165,9 +150,15 @@ const Transactions = () => {
             </select>
           </div>
 
-          <button type="button" className="btn btn-outline btn-sm" onClick={handleClearFilters}>
-            Clear Filters
-          </button>
+          <div className="filter-actions">
+            <button type="button" className="btn btn-outline btn-sm" onClick={handleClearFilters}>
+              Clear Filters
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={handleDownload}>
+              <Download size={16} style={{ marginRight: '4px' }} />
+              Download Statement
+            </button>
+          </div>
         </div>
       </div>
 
