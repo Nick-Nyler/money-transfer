@@ -1,4 +1,3 @@
-// src/components/common/TransactionItem.jsx
 "use client"
 
 import React from "react"
@@ -32,13 +31,13 @@ const TransactionItem = ({ transaction, detailed = false }) => {
 
   const formatAmount = (amount, type) => {
     const prefix = type === "send" ? "-" : type === "receive" ? "+" : ""
-    return `${prefix}KES ${Number(amount).toLocaleString()}`
+    return `${prefix}KES ${Number(amount).toLocaleString()}`
   }
 
-  const rawDate = transaction.created_at ?? transaction.createdAt
-  const dateObj = rawDate ? new Date(rawDate) : null
-  const dateStr = dateObj?.toLocaleDateString() ?? "—"
-  const timeStr = detailed && dateObj ? dateObj.toLocaleTimeString() : null
+  const rawDate = transaction.created_at_formatted ?? transaction.createdAt
+  const dateObj = rawDate ? new Date(rawDate.replace(" ", "T") + "Z") : null
+  const dateStr = dateObj?.toLocaleDateString("en-US", { timeZone: "Africa/Nairobi" }) ?? "—"
+  const timeStr = detailed && dateObj ? dateObj.toLocaleTimeString("en-US", { timeZone: "Africa/Nairobi", hour12: false }) : null
 
   const desc =
     transaction.description?.trim() !== ""
@@ -50,7 +49,7 @@ const TransactionItem = ({ transaction, detailed = false }) => {
       : `Received from ${transaction.recipient_name}`
 
   return (
-    <div className="transaction-item">
+    <div className={`transaction-item ${getTransactionColor(transaction.type)}`}>
       <div className="transaction-header">
         <span className="transaction-icon">{getTransactionIcon(transaction.type)}</span>
         <div className="transaction-info">
@@ -67,7 +66,7 @@ const TransactionItem = ({ transaction, detailed = false }) => {
           {formatAmount(transaction.amount, transaction.type)}
         </span>
         {transaction.fee > 0 && detailed && (
-          <span className="fee">Fee: KES {transaction.fee.toLocaleString()}</span>
+          <span className="fee">Fee: KES {transaction.fee.toLocaleString()}</span>
         )}
       </div>
 
