@@ -48,7 +48,7 @@ const Transactions = () => {
     )
     dispatch(
       setSorting({
-        field: "createdAt",
+        field: "created_at_formatted",
         direction: "desc",
       }),
     )
@@ -63,10 +63,15 @@ const Transactions = () => {
   })
 
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    if (sorting.field === "createdAt") {
-      return sorting.direction === "asc"
-        ? new Date(a.createdAt) - new Date(b.createdAt)
-        : new Date(b.createdAt) - new Date(a.createdAt)
+    if (sorting.field === "created_at_formatted") {
+      // Handle missing or invalid created_at_formatted for sorting
+      const dateA = a.created_at_formatted
+        ? new Date(a.created_at_formatted.replace(" ", "T") + "Z")
+        : new Date(0)
+      const dateB = b.created_at_formatted
+        ? new Date(b.created_at_formatted.replace(" ", "T") + "Z")
+        : new Date(0)
+      return sorting.direction === "asc" ? dateA - dateB : dateB - dateA
     } else if (sorting.field === "amount") {
       return sorting.direction === "asc" ? a.amount - b.amount : b.amount - a.amount
     }
@@ -81,13 +86,47 @@ const Transactions = () => {
     doc.setFontSize(12)
     doc.text(`User: ${user?.fullName || user?.email || "Unknown"}`, 14, 30)
 
-    const tableData = sortedTransactions.map((txn, index) => [
-      index + 1,
-      txn.type,
-      txn.amount.toFixed(2),
-      txn.description || "N/A",
-      new Date(txn.createdAt).toLocaleString(),
-    ])
+    // Debug log to inspect full transaction data
+    console.log("Transaction Data:", sortedTransactions.map(txn => ({
+      id: txn.id,
+      type: txn.type,
+      amount: txn.amount,
+      description: txn.description,
+      created_at_formatted: txn.created_at_formatted
+    })))
+
+    const tableData = sortedTransactions.map((txn, index) => {
+      let formattedDate
+      if (!txn.created_at_formatted) {
+        console.warn(`Transaction ${txn.id} has no created_at_formatted value`)
+        formattedDate = "Missing Date"
+      } else {
+        const date = new Date(txn.created_at_formatted.replace(" ", "T") + "Z")
+        if (isNaN(date.getTime())) {
+          console.error(`Invalid date format for transaction ${txn.id}: ${txn.created_at_formatted}`)
+          formattedDate = "Invalid Date"
+        } else {
+          formattedDate = date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+            timeZone: "Africa/Nairobi"
+          })
+        }
+      }
+
+      return [
+        index + 1,
+        txn.type,
+        txn.amount.toFixed(2),
+        txn.description || "N/A",
+        formattedDate
+      ]
+    })
 
     autoTable(doc, {
       startY: 36,
@@ -119,6 +158,7 @@ const Transactions = () => {
           <button type="submit" className="btn btn-primary btn-sm">Search</button>
         </form>
 
+ Habits & Planning Dashboard
         <div className="filter-controls">
           <div className="filter-group">
             <label htmlFor="type">Type:</label>
@@ -143,8 +183,8 @@ const Transactions = () => {
           <div className="filter-group">
             <label htmlFor="sort">Sort By:</label>
             <select id="sort" value={`${sorting.field}-${sorting.direction}`} onChange={handleSortChange}>
-              <option value="createdAt-desc">Date (Newest First)</option>
-              <option value="createdAt-asc">Date (Oldest First)</option>
+              <option value="created_at_formatted-desc">Date (Newest First)</option>
+              <option value="created_at_formatted-asc">Date (Oldest First)</option>
               <option value="amount-desc">Amount (High to Low)</option>
               <option value="amount-asc">Amount (Low to High)</option>
             </select>
