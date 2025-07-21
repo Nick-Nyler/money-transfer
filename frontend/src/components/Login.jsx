@@ -12,25 +12,12 @@ const Login = () => {
   const { status, error } = useSelector((state) => state.auth)
 
   useEffect(() => {
-    // Clear any previous errors when component mounts
     dispatch(clearError())
   }, [dispatch])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     dispatch(login({ email, password }))
-  }
-
-  const handleDemoLogin = (e) => {
-    e.preventDefault()
-    // Regular user demo
-    dispatch(login({ email: "john@example.com", password: "password123" }))
-  }
-
-  const handleAdminLogin = (e) => {
-    e.preventDefault()
-    // Admin user demo
-    dispatch(login({ email: "admin@example.com", password: "admin123" }))
   }
 
   return (
@@ -69,18 +56,6 @@ const Login = () => {
           <p>
             Don't have an account? <Link to="/register">Sign up</Link>
           </p>
-        </div>
-
-        <div className="demo-accounts">
-          <h3>Demo Accounts</h3>
-          <div className="demo-buttons">
-            <button onClick={handleDemoLogin} className="btn btn-outline" disabled={status === "loading"}>
-              Regular User Demo
-            </button>
-            <button onClick={handleAdminLogin} className="btn btn-outline" disabled={status === "loading"}>
-              Admin User Demo
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -113,3 +113,25 @@ Money-Transfer-App/
 ---
 
 *Keep it lean. Keep it mean. Let’s make money moves without the BS.*
+## test details 
+```bash
+ # Demo Users
+        admin_user = User(
+            email="admin@example.com",
+            password_hash=generate_password_hash("admin123"),
+            first_name="Admin",
+            last_name="User",
+            phone="+254712345678",
+            role="admin",
+            created_at=datetime.datetime.utcnow()
+        )
+        john_doe = User(
+            email="john@example.com",
+            password_hash=generate_password_hash("password123"),
+            first_name="John",
+            last_name="Doe",
+            phone="+254723456789",
+            role="user",
+            created_at=datetime.datetime.utcnow() - datetime.timedelta(days=10)
+        )
+        ```
