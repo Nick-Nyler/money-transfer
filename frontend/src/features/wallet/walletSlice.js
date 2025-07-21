@@ -1,23 +1,30 @@
+// frontend/src/features/wallet/walletSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { api } from "../../api"
 import { logout } from "../auth/authSlice"
 
 // Async thunks
-export const fetchWalletBalance = createAsyncThunk("wallet/fetchBalance", async (userId, { rejectWithValue }) => {
-  try {
-    return await api.getWalletBalance(userId)
-  } catch (error) {
-    return rejectWithValue(error.message)
+export const fetchWalletBalance = createAsyncThunk(
+  "wallet/fetchBalance",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await api.getWalletBalance()
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
   }
-})
+)
 
-export const addFunds = createAsyncThunk("wallet/addFunds", async ({ userId, amount }, { rejectWithValue }) => {
-  try {
-    return await api.addFunds(userId, amount)
-  } catch (error) {
-    return rejectWithValue(error.message)
+export const addFunds = createAsyncThunk(
+  "wallet/addFunds",
+  async ({ amount }, { rejectWithValue }) => {
+    try {
+      return await api.addFunds(amount)
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
   }
-})
+)
 
 const initialState = {
   wallet: null,
@@ -78,5 +85,4 @@ const walletSlice = createSlice({
 })
 
 export const { clearError, updateWalletBalance } = walletSlice.actions
-
 export default walletSlice.reducer
