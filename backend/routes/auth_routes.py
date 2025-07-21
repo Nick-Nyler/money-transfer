@@ -1,3 +1,4 @@
+# backend/routes/auth_routes.py
 from flask import Blueprint, request, jsonify, g, current_app
 from controllers import auth_controller
 from functools import wraps
@@ -41,6 +42,9 @@ def login():
     password = data.get('password')
     try:
         user = auth_controller.login_user(email, password)
+        # Block deactivated accounts
+        if user.get('role') == 'deactivated':
+            return jsonify({"error": "Your account has been deactivated"}), 403
         return jsonify({"user": user, "token": user['id']}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 401
@@ -74,13 +78,11 @@ def update_profile():
 def change_password():
     # 🔑 force JSON parsing on PUT
     data = request.get_json(force=True) or {}
-
     if 'oldPassword' not in data or 'newPassword' not in data:
         return jsonify({"error": "Missing oldPassword or newPassword"}), 400
 
     old_password = str(data['oldPassword'])
     new_password = str(data['newPassword'])
-
     current_app.logger.debug(f"change_password payload: old={old_password!r}, new={new_password!r}")
 
     try:

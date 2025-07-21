@@ -143,6 +143,17 @@ export const api = {
     return await _callApi(`/admin/users/${userId}`, "GET", null, token);
   },
 
+  // — New: Activate/Deactivate User —
+  updateUserStatus: async (userId, role) => {
+    const token = localStorage.getItem("authToken");
+    return await _callApi(
+      `/admin/users/${userId}/status`,
+      "PATCH",
+      { role },
+      token
+    );
+  },
+
   // — New: Reverse a transaction —
   reverseTransaction: async (transactionId) => {
     const token = localStorage.getItem("authToken");
