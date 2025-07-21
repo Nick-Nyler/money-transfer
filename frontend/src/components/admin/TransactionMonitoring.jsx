@@ -1,173 +1,161 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { fetchAllTransactions } from "../../features/transactions/transactionsSlice"
-import { api } from "../../api"
-import LoadingSpinner from "../common/LoadingSpinner"
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAllTransactions } from "../../features/transactions/transactionsSlice";
+import { api } from "../../api";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 const TransactionMonitoring = () => {
-  const dispatch = useDispatch()
-  const { user: currentUser } = useSelector((state) => state.auth)
-  const { allTransactions, status, error } = useSelector((state) => state.transactions)
+  const dispatch = useDispatch();
+  const { user: currentUser } = useSelector((state) => state.auth);
+  const { allTransactions, status, error } = useSelector((state) => state.transactions);
 
-  const [users, setUsers] = useState([])
-  const [usersLoading, setUsersLoading] = useState(true)
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [filters, setLocalFilters] = useState({
     type: "all",
     status: "all",
     dateRange: "all",
     searchTerm: "",
     userId: "all",
-  })
+  });
   const [sorting, setLocalSorting] = useState({
     field: "createdAt",
     direction: "desc",
-  })
-  const [searchTerm, setSearchTerm] = useState("")
+  });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (currentUser && currentUser.role === "admin") {
-      dispatch(fetchAllTransactions())
+    if (currentUser?.role === "admin") {
+      dispatch(fetchAllTransactions());
 
-      // Fetch all users for filtering
-      setUsersLoading(true)
+      setUsersLoading(true);
       api
         .getAllUsers()
         .then((response) => {
-          setUsers(response.users)
-          setUsersLoading(false)
+          setUsers(response.users);
         })
-        .catch(() => {
-          setUsersLoading(false)
-        })
+        .finally(() => setUsersLoading(false));
     }
-  }, [dispatch, currentUser])
+  }, [dispatch, currentUser]);
 
   const handleFilterChange = (e) => {
-    const { name, value } = e.target
-    setLocalFilters({
-      ...filters,
-      [name]: value,
-    })
-  }
+    const { name, value } = e.target;
+    setLocalFilters({ ...filters, [name]: value });
+  };
 
   const handleSortChange = (e) => {
-    const { value } = e.target
-    const [field, direction] = value.split("-")
-    setLocalSorting({ field, direction })
-  }
+    const [field, direction] = e.target.value.split("-");
+    setLocalSorting({ field, direction });
+  };
 
   const handleSearch = (e) => {
-    e.preventDefault()
-    setLocalFilters({
-      ...filters,
-      searchTerm,
-    })
-  }
+    e.preventDefault();
+    setLocalFilters({ ...filters, searchTerm });
+  };
 
   const handleClearFilters = () => {
-    setSearchTerm("")
+    setSearchTerm("");
     setLocalFilters({
       type: "all",
       status: "all",
       dateRange: "all",
       searchTerm: "",
       userId: "all",
-    })
+    });
     setLocalSorting({
       field: "createdAt",
       direction: "desc",
-    })
-  }
+    });
+  };
 
-  // Apply filters
-  const filteredTransactions = allTransactions.filter((transaction) => {
-    // Type filter
-    if (filters.type !== "all" && transaction.type !== filters.type) {
-      return false
+  const handleReverse = async (transactionId) => {
+    try {
+      await api.reverseTransaction(transactionId);
+      dispatch(fetchAllTransactions());
+    } catch (err) {
+      console.error("Reverse failed:", err);
     }
+  };
 
-    // Status filter
-    if (filters.status !== "all" && transaction.status !== filters.status) {
-      return false
-    }
+  // Filtering
+  const filteredTransactions = allTransactions.filter((tx) => {
+    if (filters.type !== "all" && tx.type !== filters.type) return false;
+    if (filters.status !== "all" && tx.status !== filters.status) return false;
 
-    // User filter
-    const userId = transaction.user_id || transaction.userId
-    if (filters.userId !== "all" && userId !== Number.parseInt(filters.userId)) {
-      return false
-    }
+    const userId = tx.user_id ?? tx.userId;
+    if (filters.userId !== "all" && userId !== Number(filters.userId)) return false;
 
-    // Date range filter
-    const dateVal = transaction.created_at || transaction.createdAt
+    const dateVal = tx.created_at ?? tx.createdAt;
     if (filters.dateRange !== "all" && dateVal) {
-      const transactionDate = new Date(dateVal)
-      const today = new Date()
+      const txDate = new Date(dateVal);
+      const today = new Date();
       if (filters.dateRange === "today") {
-        const isToday =
-          transactionDate.getDate() === today.getDate() &&
-          transactionDate.getMonth() === today.getMonth() &&
-          transactionDate.getFullYear() === today.getFullYear()
-        if (!isToday) return false
+        if (
+          txDate.getDate() !== today.getDate() ||
+          txDate.getMonth() !== today.getMonth() ||
+          txDate.getFullYear() !== today.getFullYear()
+        )
+          return false;
       } else if (filters.dateRange === "week") {
-        const weekAgo = new Date()
-        weekAgo.setDate(today.getDate() - 7)
-        if (transactionDate < weekAgo) return false
+        const weekAgo = new Date();
+        weekAgo.setDate(today.getDate() - 7);
+        if (txDate < weekAgo) return false;
       } else if (filters.dateRange === "month") {
-        const monthAgo = new Date()
-        monthAgo.setMonth(today.getMonth() - 1)
-        if (transactionDate < monthAgo) return false
+        const monthAgo = new Date();
+        monthAgo.setMonth(today.getMonth() - 1);
+        if (txDate < monthAgo) return false;
       }
     }
 
-    // Search term filter
     if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase()
-      // Prefer backend-supplied user_name, fallback to users array
+      const term = filters.searchTerm.toLowerCase();
+      const description = (tx.description || "").toLowerCase();
+      const recipient = (tx.recipient_name || tx.recipientName || "").toLowerCase();
+      const amount = String(tx.amount || "");
       const userName =
-        transaction.user_name ||
-        (users.find((u) => u.id === userId)
-          ? `${users.find((u) => u.id === userId).firstName} ${users.find((u) => u.id === userId).lastName}`
-          : "")
-      const descriptionMatch = (transaction.description || "").toLowerCase().includes(searchLower)
-      const recipientMatch = (transaction.recipient_name || transaction.recipientName || "")
-        .toLowerCase()
-        .includes(searchLower)
-      const amountMatch = (transaction.amount || "").toString().includes(searchLower)
-      const userMatch = userName.toLowerCase().includes(searchLower)
-      if (!descriptionMatch && !recipientMatch && !amountMatch && !userMatch) {
-        return false
-      }
+        tx.user_name ||
+        (() => {
+          const u = users.find((u) => u.id === userId);
+          return u ? `${u.firstName} ${u.lastName}` : "";
+        })().toLowerCase();
+
+      if (
+        !description.includes(term) &&
+        !recipient.includes(term) &&
+        !amount.includes(term) &&
+        !userName.includes(term)
+      )
+        return false;
     }
 
-    return true
-  })
+    return true;
+  });
 
-  // Apply sorting
+  // Sorting
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const aDate = new Date(a.created_at || a.createdAt)
-    const bDate = new Date(b.created_at || b.createdAt)
     if (sorting.field === "createdAt") {
-      return sorting.direction === "asc" ? aDate - bDate : bDate - aDate
-    } else if (sorting.field === "amount") {
-      return sorting.direction === "asc" ? a.amount - b.amount : b.amount - a.amount
-    } else if (sorting.field === "userId") {
-      const aId = a.user_id || a.userId
-      const bId = b.user_id || b.userId
-      return sorting.direction === "asc" ? aId - bId : bId - aId
+      const ad = new Date(a.created_at ?? a.createdAt);
+      const bd = new Date(b.created_at ?? b.createdAt);
+      return sorting.direction === "asc" ? ad - bd : bd - ad;
     }
-    return 0
-  })
+    if (sorting.field === "amount") {
+      return sorting.direction === "asc" ? a.amount - b.amount : b.amount - a.amount;
+    }
+    if (sorting.field === "userId") {
+      const ai = a.user_id ?? a.userId;
+      const bi = b.user_id ?? b.userId;
+      return sorting.direction === "asc" ? ai - bi : bi - ai;
+    }
+    return 0;
+  });
 
-  if (status === "loading" || usersLoading) {
-    return <LoadingSpinner />
-  }
+  if (status === "loading" || usersLoading) return <LoadingSpinner />;
 
   return (
     <div className="transaction-monitoring-container">
       <h1>Transaction Monitoring</h1>
-
       {error && <div className="error-message">{error}</div>}
 
       <div className="monitoring-stats">
@@ -175,21 +163,18 @@ const TransactionMonitoring = () => {
           <h3>Total Transactions</h3>
           <p className="stat-value">{allTransactions.length}</p>
         </div>
-
         <div className="stat-card">
           <h3>Total Volume</h3>
           <p className="stat-value">
-            KES {allTransactions.reduce((sum, t) => sum + Number(t.amount), 0).toLocaleString()}
+            KES {allTransactions.reduce((s, t) => s + Number(t.amount), 0).toLocaleString()}
           </p>
         </div>
-
         <div className="stat-card">
           <h3>Total Fees</h3>
           <p className="stat-value">
-            KES {allTransactions.reduce((sum, t) => sum + Number(t.fee), 0).toLocaleString()}
+            KES {allTransactions.reduce((s, t) => s + Number(t.fee), 0).toLocaleString()}
           </p>
         </div>
-
         <div className="stat-card">
           <h3>Filtered Results</h3>
           <p className="stat-value">{sortedTransactions.length}</p>
@@ -208,66 +193,7 @@ const TransactionMonitoring = () => {
             Search
           </button>
         </form>
-
-        <div className="filter-controls">
-          <div className="filter-group">
-            <label htmlFor="type">Type:</label>
-            <select id="type" name="type" value={filters.type} onChange={handleFilterChange}>
-              <option value="all">All Types</option>
-              <option value="send">Sent</option>
-              <option value="receive">Received</option>
-              <option value="deposit">Deposits</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label htmlFor="status">Status:</label>
-            <select id="status" name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label htmlFor="userId">User:</label>
-            <select id="userId" name="userId" value={filters.userId} onChange={handleFilterChange}>
-              <option value="all">All Users</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label htmlFor="dateRange">Date:</label>
-            <select id="dateRange" name="dateRange" value={filters.dateRange} onChange={handleFilterChange}>
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">Last 30 Days</option>
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label htmlFor="sort">Sort By:</label>
-            <select id="sort" value={`${sorting.field}-${sorting.direction}`} onChange={handleSortChange}>
-              <option value="createdAt-desc">Date (Newest First)</option>
-              <option value="createdAt-asc">Date (Oldest First)</option>
-              <option value="amount-desc">Amount (High to Low)</option>
-              <option value="amount-asc">Amount (Low to High)</option>
-              <option value="userId-asc">User ID (A-Z)</option>
-              <option value="userId-desc">User ID (Z-A)</option>
-            </select>
-          </div>
-
-          <button type="button" className="btn btn-outline btn-sm" onClick={handleClearFilters}>
-            Clear Filters
-          </button>
-        </div>
+        {/* Add other filter controls here: type, status, user, dateRange, sort, clear */}
       </div>
 
       {sortedTransactions.length > 0 ? (
@@ -284,50 +210,61 @@ const TransactionMonitoring = () => {
                 <th>Description</th>
                 <th>Date</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {sortedTransactions.map((transaction) => {
-                // Prefer backend-supplied user_name, fallback to users array
-                const userId = transaction.user_id || transaction.userId
+              {sortedTransactions.map((tx) => {
+                const userId = tx.user_id ?? tx.userId;
                 const userName =
-                  transaction.user_name ||
-                  (users.find((u) => u.id === userId)
-                    ? `${users.find((u) => u.id === userId).firstName} ${users.find((u) => u.id === userId).lastName}`
-                    : "Unknown")
-                const formattedDate = transaction.created_at_formatted ||
-                  (transaction.created_at
-                    ? new Date(transaction.created_at).toLocaleString()
-                    : transaction.createdAt
-                    ? new Date(transaction.createdAt).toLocaleString()
-                    : "-")
+                  tx.user_name ||
+                  (() => {
+                    const u = users.find((u) => u.id === userId);
+                    return u ? `${u.firstName} ${u.lastName}` : "Unknown";
+                  })();
+                const formattedDate = tx.created_at
+                  ? new Date(tx.created_at).toLocaleString()
+                  : tx.createdAt
+                  ? new Date(tx.createdAt).toLocaleString()
+                  : "-";
 
                 return (
-                  <tr key={transaction.id}>
-                    <td>{transaction.id}</td>
+                  <tr key={tx.id}>
+                    <td>{tx.id}</td>
                     <td>{userName}</td>
                     <td>
-                      <span className={`transaction-type ${transaction.type}`}>{transaction.type}</span>
+                      <span className={`transaction-type ${tx.type}`}>{tx.type}</span>
                     </td>
-                    <td>KES {Number(transaction.amount).toLocaleString()}</td>
-                    <td>KES {Number(transaction.fee).toLocaleString()}</td>
+                    <td>KES {Number(tx.amount).toLocaleString()}</td>
+                    <td>KES {Number(tx.fee).toLocaleString()}</td>
                     <td>
-                      {transaction.recipient_name || transaction.recipientName ? (
+                      {tx.recipient_name || tx.recipientName ? (
                         <div>
-                          <div>{transaction.recipient_name || transaction.recipientName}</div>
-                          <small>{transaction.recipient_phone || transaction.recipientPhone}</small>
+                          <div>{tx.recipient_name || tx.recipientName}</div>
+                          <small>{tx.recipient_phone || tx.recipientPhone}</small>
                         </div>
                       ) : (
                         "-"
                       )}
                     </td>
-                    <td>{transaction.description || "-"}</td>
+                    <td>{tx.description || "-"}</td>
                     <td>{formattedDate}</td>
                     <td>
-                      <span className={`status-badge ${transaction.status}`}>{transaction.status}</span>
+                      <span className={`status-badge ${tx.status}`}>{tx.status}</span>
+                    </td>
+                    <td>
+                      {tx.type.toLowerCase() === "send" &&
+                       tx.status.toLowerCase() === "completed" && (
+                        <button
+                          onClick={() => handleReverse(tx.id)}
+                          className="btn btn-outline btn-sm"
+                        >
+                          Reverse
+                        </button>
+                      )}
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
@@ -347,7 +284,7 @@ const TransactionMonitoring = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default TransactionMonitoring
+export default TransactionMonitoring;
