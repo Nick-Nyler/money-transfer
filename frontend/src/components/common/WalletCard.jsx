@@ -1,65 +1,66 @@
+// src/components/common/WalletCard.jsx
 "use client"
 
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { Link } from "react-router-dom"
-import { login, clearError } from "../features/auth/authSlice"
+import { useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 
-const Login = () => {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const dispatch = useDispatch()
-  const { status, error } = useSelector((state) => state.auth)
+const WalletCard = ({ wallet }) => {
+  const [showBalance, setShowBalance] = useState(() => {
+    const saved = localStorage.getItem("showBalance")
+    return saved !== null ? JSON.parse(saved) : true
+  })
 
-  useEffect(() => {
-    dispatch(clearError())
-  }, [dispatch])
+  const toggleBalance = () => {
+    setShowBalance(prev => {
+      const updated = !prev
+      localStorage.setItem("showBalance", JSON.stringify(updated))
+      return updated
+    })
+  }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    dispatch(login({ email, password }))
+  if (!wallet) {
+    return (
+      <div className="wallet-card loading">
+        <div className="wallet-content">
+          <div className="wallet-balance">
+            <h3>Wallet Balance</h3>
+            <div className="balance-loading">Loading...</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>Money Transfer</h1>
-          <p>Sign in to your account</p>
+    <div className="wallet-card">
+      <div className="wallet-content">
+        <div className="wallet-header">
+          <h3>Wallet Balance</h3>
+          <div className="wallet-icon">💳</div>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={status === "loading"}>
-            {status === "loading" ? "Signing in..." : "Sign In"}
+        <div className="wallet-balance">
+          <span className="currency">{wallet.currency}</span>
+          <span className={`amount ${!showBalance ? "blurred" : ""}`}>
+            {wallet.balance.toLocaleString()}
+          </span>
+          <button
+            className="toggle-visibility"
+            onClick={toggleBalance}
+            aria-label="Toggle Balance Visibility"
+          >
+            {showBalance ? <Eye size={20} /> : <EyeOff size={20} />}
           </button>
-        </form>
+        </div>
 
-        <div className="auth-links">
-          <p>
-            Don't have an account? <Link to="/register">Sign up</Link>
-          </p>
+        <div className="wallet-footer">
+          <small>Available Balance</small>
         </div>
       </div>
     </div>
   )
 }
 
-export default Login
+export default WalletCard
+
+
