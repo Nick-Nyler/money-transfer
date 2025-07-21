@@ -57,13 +57,13 @@ export const api = {
   },
 
   // — Wallet —
-  getWalletBalance: async (userId) => {
+  getWalletBalance: async () => {
     const token = localStorage.getItem("authToken");
     const response = await _callApi("/wallet/balance", "GET", null, token);
     return { wallet: response };
   },
 
-  addFunds: async (userId, amount) => {
+  addFunds: async (amount) => {
     const token = localStorage.getItem("authToken");
     const response = await _callApi("/wallet/add-funds", "POST", { amount }, token);
     return { wallet: response };
@@ -121,7 +121,7 @@ export const api = {
   sendMoney: async (sendData) => {
     const token = localStorage.getItem("authToken");
     const transaction = await _callApi("/transactions/send", "POST", sendData, token);
-    const { wallet } = await api.getWalletBalance(sendData.userId);
+    const { wallet } = await api.getWalletBalance();
     return { wallet, transaction };
   },
 
@@ -141,6 +141,18 @@ export const api = {
   getUserDetails: async (userId) => {
     const token = localStorage.getItem("authToken");
     return await _callApi(`/admin/users/${userId}`, "GET", null, token);
+  },
+
+  // — New: Reverse a transaction —
+  reverseTransaction: async (transactionId) => {
+    const token = localStorage.getItem("authToken");
+    const { transaction } = await _callApi(
+      `/admin/transactions/${transactionId}/reverse`,
+      "POST",
+      null,
+      token
+    );
+    return { transaction };
   },
 
   updateUserProfile: async (userData) => {
