@@ -157,8 +157,7 @@ const Transactions = () => {
           />
           <button type="submit" className="btn btn-primary btn-sm">Search</button>
         </form>
-
- Habits & Planning Dashboard
+        
         <div className="filter-controls">
           <div className="filter-group">
             <label htmlFor="type">Type:</label>
