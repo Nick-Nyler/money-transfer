@@ -195,7 +195,7 @@ const UserManagement = () => {
                           <span className={`role-badge ${u.role}`}>{u.role}</span>
                         </td>
                         <td>{created ? new Date(created).toLocaleDateString() : ""}</td>
-                        <td className="flex gap-2">
+                        <td className="flex gap-2 btn-activate">
                           <button
                             className="btn btn-sm"
                             onClick={(e) => {
@@ -205,20 +205,24 @@ const UserManagement = () => {
                           >
                             View
                           </button>
-                          <button
-                            className={`btn btn-sm ${isActive ? "btn-success" : "btn-danger"}`}
-                            disabled={isUpdating}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleUserStatus(u.id, u.role)
-                            }}
-                          >
-                            {isUpdating
-                              ? "Updating..."
-                              : isActive
-                                ? "Active"
-                                : "Deactivated"}
-                          </button>
+
+                          {/* to do away with the deactivate account button in the admin user */}
+                          {u.role !== "admin" && (
+                            <button
+                              className={`btn btn-sm ${isActive ? "btn-success" : "btn-danger"}`}
+                              disabled={isUpdating}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleUserStatus(u.id, u.role)
+                              }}
+                          > 
+                              {isUpdating
+                                ? "Updating..."
+                                : isActive
+                                  ? "Active"
+                                  : "Deactivated"}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
