@@ -1,101 +1,108 @@
 # backend/routes/wallet_routes.py
 
 from flask import Blueprint, request, jsonify, g, make_response
-from controllers import wallet_controller
 from routes.auth_routes import login_required
+from controllers.wallet_controller import (
+    get_wallet_balance,
+    add_funds_to_wallet,
+    initiate_mpesa_deposit,
+    handle_mpesa_callback,
+    get_transaction_status,
+)
 from models.transaction import Transaction
-from models.wallet import Wallet
-from extensions import db
-import datetime, csv, io
+import csv, io
 
-from services.mpesa_service import MpesaService
+wallet_bp = Blueprint("wallet_bp", __name__, url_prefix="/api/wallet")
 
-wallet_bp = Blueprint('wallet_bp', __name__, url_prefix='/api/wallet')
 
-@wallet_bp.route('/balance', methods=['GET'])
+# ───────────────────────── Wallet Balance ─────────────────────────
+@wallet_bp.get("/balance")
 @login_required
-def get_balance():
+def balance():
     try:
-        wallet = wallet_controller.get_wallet_balance(g.user_id)
-        return jsonify(wallet), 200
+        data = get_wallet_balance(g.user_id)
+        return jsonify(data), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
-@wallet_bp.route('/add-funds', methods=['POST'])
-@login_required
-def add_funds():
-    data = request.get_json()
-    amount = data.get('amount')
-    phone  = data.get('phone_number')
 
-    if not amount or not isinstance(amount, (int, float)) or amount <= 0:
+# ───────────────────────── Manual Top-Up (no MPesa) ─────────────────────────
+@wallet_bp.post("/add-funds/manual")
+@login_required
+def add_funds_manual():
+    body = request.get_json() or {}
+    amount = body.get("amount")
+    if not isinstance(amount, (int, float)) or amount <= 0:
+        return jsonify({"error": "Invalid amount"}), 400
+
+    try:
+        data = add_funds_to_wallet(g.user_id, float(amount))
+        return jsonify({"message": "Funds added", "wallet": data}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+
+# ───────────────────────── STK Push Init ─────────────────────────
+@wallet_bp.post("/add-funds")  # keep your old path but now it triggers STK
+@login_required
+def add_funds_mpesa():
+    body = request.get_json() or {}
+    amount = body.get("amount")
+    phone = body.get("phone_number") or body.get("phone")  # support both keys
+
+    if not isinstance(amount, (int, float)) or amount <= 0:
         return jsonify({"error": "Invalid amount"}), 400
     if not phone:
         return jsonify({"error": "Phone number is required"}), 400
 
     try:
-        resp = MpesaService.lipa_na_mpesa(phone, amount, g.user_id, "Wallet Top‑up")
+        resp = initiate_mpesa_deposit(g.user_id, phone, int(amount))
         return jsonify({
             "message": "STK Push initiated",
-            "CheckoutRequestID": resp.get("CheckoutRequestID"),
-            "MerchantRequestID": resp.get("MerchantRequestID"),
             **resp
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@wallet_bp.route('/mpesa/callback', methods=['POST'])
+
+# ───────────────────────── MPesa Callback ─────────────────────────
+@wallet_bp.post("/mpesa/callback")
 def mpesa_callback():
-    data = request.get_json()
-    stk = data.get('Body', {}).get('stkCallback', {})
-    result_code = stk.get('ResultCode')
-
-    if result_code == 0:
-        items = {item['Name']: item.get('Value') for item in stk
-                 .get('CallbackMetadata', {}).get('Item', [])}
-        amount            = items.get('Amount')
-        phone_number      = items.get('PhoneNumber')
-        receipt_no        = items.get('MpesaReceiptNumber')
-        account_reference = stk.get('AccountReference')
-
-        try:
-            user_id = int(account_reference)
-            wallet = Wallet.query.filter_by(user_id=user_id).first()
-            wallet.balance += amount
-            db.session.add(wallet)
-
-            txn = Transaction(
-                user_id=user_id,
-                type='deposit',
-                amount=amount,
-                fee=0,
-                status='completed',
-                description=f'M-Pesa receipt {receipt_no}',
-                recipient_phone=str(phone_number),
-                created_at=datetime.datetime.utcnow()
-            )
-            db.session.add(txn)
-            db.session.commit()
-        except Exception:
-            # swallow errors to avoid MPesa retry storms
-            pass
-
-    # ACK quickly so MPesa stops retrying
+    """
+    Safaricom hits here. Must ACK fast (ResultCode 0).
+    """
+    payload = request.get_json() or {}
+    try:
+        handle_mpesa_callback(payload)
+    except Exception:
+        # swallow to prevent endless retries
+        pass
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
 
-@wallet_bp.route('/statement', methods=['GET'])
+
+# ───────────────────────── TX Polling ─────────────────────────
+@wallet_bp.get("/tx-status/<checkout_id>")
+@login_required
+def tx_status(checkout_id):
+    try:
+        data = get_transaction_status(checkout_id)
+        return jsonify(data), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+
+# ───────────────────────── CSV Statement ─────────────────────────
+@wallet_bp.get("/statement")
 @login_required
 def download_statement():
     """
-    Streams a CSV file of all transactions for the logged-in user.
-    Columns: ID, Type, Amount, Fee, Status, Date
+    Streams a CSV for the logged-in user's transactions.
     """
-    txs = Transaction.query.filter_by(user_id=g.user_id)\
-                           .order_by(Transaction.created_at).all()
+    txs = Transaction.query.filter_by(user_id=g.user_id).order_by(Transaction.created_at).all()
 
     si = io.StringIO()
     cw = csv.writer(si)
-    cw.writerow(['ID', 'Type', 'Amount', 'Fee', 'Status', 'Date'])
+    cw.writerow(["ID", "Type", "Amount", "Fee", "Status", "Date"])
     for t in txs:
         cw.writerow([
             t.id,
