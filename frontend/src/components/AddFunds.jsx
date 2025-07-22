@@ -4,12 +4,18 @@
 import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
-import { addFunds, fetchWalletBalance } from "../features/wallet/walletSlice"
+import {
+  fetchWalletBalance,
+  initiateStk,
+  pollTxnStatus,
+  stopPolling,
+  clearError,
+} from "../features/wallet/walletSlice"
 import { fetchTransactions } from "../features/transactions/transactionsSlice"
 import WalletCard from "./common/WalletCard"
 import LoadingSpinner from "./common/LoadingSpinner"
 
-// normalize 07xxxx or +2547xxxx into 2547xxxx
+// normalize 07xxxx / +2547xxxx / 2547xxxx -> 2547xxxx
 const normalizePhone = (p) => {
   let phone = p.trim()
   if (phone.startsWith("+")) phone = phone.slice(1)
@@ -20,42 +26,68 @@ const normalizePhone = (p) => {
 const AddFunds = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { user } = useSelector((state) => state.auth)
-  const { wallet, status, error } = useSelector((state) => state.wallet)
+
+  const { user } = useSelector((s) => s.auth)
+  const { wallet, status, error, polling, pendingCheckoutId } = useSelector((s) => s.wallet)
 
   const [amount, setAmount] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [step, setStep] = useState(1)
   const [formErrors, setFormErrors] = useState({})
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [localProcessing, setLocalProcessing] = useState(false)
   const [transactionComplete, setTransactionComplete] = useState(false)
 
   useEffect(() => {
-    if (user && user.phone) {
-      setPhoneNumber(user.phone)
+    if (user) {
+      if (user.phone) setPhoneNumber(user.phone)
       dispatch(fetchWalletBalance())
     }
   }, [dispatch, user])
 
+  // Poll every 3s, max ~60s (20 tries)
+  useEffect(() => {
+    if (!polling || !pendingCheckoutId) return
+    let tries = 0
+    const id = setInterval(() => {
+      tries++
+      dispatch(pollTxnStatus(pendingCheckoutId)).then((res) => {
+        if (res.payload && res.payload.status && res.payload.status !== "pending") {
+          dispatch(fetchWalletBalance())
+          dispatch(fetchTransactions(user.id))
+          dispatch(stopPolling())
+          setTransactionComplete(true)
+          setLocalProcessing(false)
+        }
+      })
+      if (tries > 20) {
+        dispatch(stopPolling())
+        setLocalProcessing(false)
+        setFormErrors({ general: "Timed out waiting for M‑Pesa. If you approved, refresh dashboard." })
+      }
+    }, 3000)
+    return () => clearInterval(id)
+  }, [polling, pendingCheckoutId, dispatch, user])
+
+  // ────────── Validation ──────────
   const validateStep1 = () => {
     const errs = {}
     const num = parseFloat(amount)
     if (!amount) errs.amount = "Amount is required"
     else if (isNaN(num)) errs.amount = "Amount must be a number"
-    else if (num < 1) errs.amount = "Minimum amount is KES 1"
-    else if (num > 300000) errs.amount = "Maximum amount is KES 300,000"
+    else if (num < 1) errs.amount = "Minimum amount is KES 1"
+    else if (num > 300000) errs.amount = "Maximum amount is KES 300,000"
     setFormErrors(errs)
-    return !Object.keys(errs).length
+    return Object.keys(errs).length === 0
   }
 
   const validateStep2 = () => {
     const errs = {}
     const cleaned = phoneNumber.replace(/\s/g, "")
-    const re = /^(?:07\d{8}|\+2547\d{8})$/
+    const re = /^(?:07\d{8}|2547\d{8}|\+2547\d{8})$/
     if (!cleaned) errs.phoneNumber = "Phone number is required"
     else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
     setFormErrors(errs)
-    return !Object.keys(errs).length
+    return Object.keys(errs).length === 0
   }
 
   const next = () => {
@@ -72,31 +104,26 @@ const AddFunds = () => {
       setStep(2)
       return
     }
+    setLocalProcessing(true)
+    dispatch(clearError())
 
-    setIsProcessing(true)
-    setFormErrors({})
-
-    const num = parseFloat(amount)
+    const amt = parseFloat(amount)
     const phone = normalizePhone(phoneNumber)
 
-    dispatch(addFunds({ amount: num, phone_number: phone }))
+    dispatch(initiateStk({ amount: amt, phone_number: phone }))
       .unwrap()
-      .then(() => {
-        dispatch(fetchWalletBalance())
-        dispatch(fetchTransactions())
-        setTransactionComplete(true)
-      })
       .catch((e) => {
-        setFormErrors({ general: e.message || e })
+        setFormErrors({ general: e || "Failed to initiate STK" })
+        setLocalProcessing(false)
       })
-      .finally(() => setIsProcessing(false))
   }
 
   const finish = () => navigate("/dashboard")
 
-  if (status === "loading" && !isProcessing) return <LoadingSpinner />
-
   const displayAmt = parseFloat(amount) || 0
+  const firstLoad = status === "loading" && !localProcessing && !polling && !transactionComplete
+
+  if (firstLoad) return <LoadingSpinner />
 
   return (
     <div className="add-funds-container">
@@ -135,7 +162,7 @@ const AddFunds = () => {
           <div className="quick-amounts">
             {["1000", "5000", "10000"].map((val) => (
               <button key={val} onClick={() => setAmount(val)} className="amount-btn">
-                KES {Number(val).toLocaleString()}
+                KES {Number(val).toLocaleString()}
               </button>
             ))}
           </div>
@@ -165,10 +192,10 @@ const AddFunds = () => {
       )}
 
       {/* STEP 3 */}
-      {step === 3 && !isProcessing && !transactionComplete && (
+      {step === 3 && !localProcessing && !polling && !transactionComplete && (
         <div className="step-content">
           <h2>Confirm Payment</h2>
-          <p>Amount: KES {displayAmt.toLocaleString()}</p>
+          <p>Amount: KES {displayAmt.toLocaleString()}</p>
           <p>Phone: {phoneNumber}</p>
           <div className="form-actions">
             <button className="btn btn-outline" onClick={back}>Back</button>
@@ -177,16 +204,20 @@ const AddFunds = () => {
         </div>
       )}
 
-      {isProcessing && (
+      {/* Processing / Polling */}
+      {(localProcessing || polling) && !transactionComplete && (
         <div className="step-content">
           <LoadingSpinner />
-          <p>Sending STK push…</p>
+          <p>{polling ? "Waiting for M‑Pesa confirmation…" : "Sending STK push…"}</p>
+          <p>Approve the prompt on your phone.</p>
         </div>
       )}
 
+      {/* Done */}
       {transactionComplete && (
         <div className="step-content">
-          <h2>Check your phone for the M‑Pesa prompt!</h2>
+          <h2>Payment Successful 🎉</h2>
+          <p>Your wallet has been updated.</p>
           <button className="btn btn-primary" onClick={finish}>
             Back to Dashboard
           </button>
