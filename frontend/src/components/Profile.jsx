@@ -1,100 +1,116 @@
-// src/components/Profile.jsx
-"use client";
+"use client"
 
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { updateProfile, changePassword, clearError } from "../features/auth/authSlice";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { updateProfile, changePassword, clearError } from "../features/auth/authSlice"
+import { toast } from "react-toastify"
 
 const Profile = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { user, status, error, success } = useSelector((s) => s.auth);
+  const dispatch = useDispatch()
+  const { user, status, error } = useSelector((s) => s.auth)
 
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || "",
     lastName:  user?.lastName  || "",
     phone:     user?.phone     || "",
-  });
+  })
+
   const [passwordData, setPasswordData] = useState({
     oldPassword:     "",
     newPassword:     "",
     confirmPassword: "",
-  });
-  const [activeTab, setActiveTab]           = useState("profile");
-  const [profileSuccess, setProfileSuccess] = useState(false);
-  const [formErrors, setFormErrors]         = useState({});
+  })
 
-  // Clear errors and success when switching tabs
+  const [activeTab, setActiveTab]           = useState("profile")
+  const [profileSuccess, setProfileSuccess] = useState(false)
+  const [formErrors, setFormErrors]         = useState({})
+
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    dispatch(clearError());
-    setFormErrors({});
-    setProfileSuccess(false);
-  };
+    setActiveTab(tab)
+    dispatch(clearError())
+    setFormErrors({})
+    setProfileSuccess(false)
+  }
 
   const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfileData((p) => ({ ...p, [name]: value }));
-    if (profileSuccess) setProfileSuccess(false);
-    if (formErrors[name])  setFormErrors((f) => ({ ...f, [name]: "" }));
-    dispatch(clearError());
-  };
+    const { name, value } = e.target
+    setProfileData((p) => ({ ...p, [name]: value }))
+    if (profileSuccess) setProfileSuccess(false)
+    if (formErrors[name]) setFormErrors((f) => ({ ...f, [name]: "" }))
+    dispatch(clearError())
+  }
 
   const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData((p) => ({ ...p, [name]: value }));
-    if (formErrors[name]) setFormErrors((f) => ({ ...f, [name]: "" }));
-    dispatch(clearError());
-  };
+    const { name, value } = e.target
+    setPasswordData((p) => ({ ...p, [name]: value }))
+    if (formErrors[name]) setFormErrors((f) => ({ ...f, [name]: "" }))
+    dispatch(clearError())
+  }
 
   const validateProfileForm = () => {
-    const errs = {};
-    if (!profileData.firstName.trim()) errs.firstName = "First name is required";
-    if (!profileData.lastName.trim())  errs.lastName  = "Last name is required";
+    const errs = {}
+    if (!profileData.firstName.trim()) errs.firstName = "First name is required"
+    if (!profileData.lastName.trim()) errs.lastName = "Last name is required"
     if (!profileData.phone.trim()) {
-      errs.phone = "Phone number is required";
+      errs.phone = "Phone number is required"
     } else if (!/^[+\d]{10,15}$/.test(profileData.phone.replace(/\s/g, ""))) {
-      errs.phone = "Phone number is invalid";
+      errs.phone = "Phone number is invalid"
     }
-    setFormErrors(errs);
-    return !Object.keys(errs).length;
-  };
+    setFormErrors(errs)
+    return !Object.keys(errs).length
+  }
 
   const validatePasswordForm = () => {
-    const errs = {};
-    if (!passwordData.oldPassword)      errs.oldPassword     = "Current password is required";
-    if (!passwordData.newPassword)      errs.newPassword     = "New password is required";
-    else if (passwordData.newPassword.length < 6)
-      errs.newPassword = "Password must be at least 6 characters";
-    if (passwordData.newPassword !== passwordData.confirmPassword)
-      errs.confirmPassword = "Passwords do not match";
-    setFormErrors(errs);
-    return !Object.keys(errs).length;
-  };
+    const errs = {}
+    if (!passwordData.oldPassword) errs.oldPassword = "Current password is required"
+    if (!passwordData.newPassword) {
+      errs.newPassword = "New password is required"
+    } else if (passwordData.newPassword.length < 6) {
+      errs.newPassword = "Password must be at least 6 characters"
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errs.confirmPassword = "Passwords do not match"
+    }
+    setFormErrors(errs)
+    return !Object.keys(errs).length
+  }
 
   const handleProfileSubmit = (e) => {
-    e.preventDefault();
-    if (!validateProfileForm()) return;
+    e.preventDefault()
+    if (!validateProfileForm()) return
+
     dispatch(updateProfile(profileData))
       .unwrap()
-      .then(() => setProfileSuccess(true))
-      .catch(() => {});
-  };
+      .then(() => {
+        setProfileSuccess(true)
+        toast.success("Profile updated successfully!")
+      })
+      .catch(() => {
+        toast.error("Failed to update profile.")
+      })
+  }
 
   const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    if (!validatePasswordForm()) return;
+    e.preventDefault()
+    if (!validatePasswordForm()) return
+
     dispatch(changePassword({
       oldPassword: passwordData.oldPassword,
       newPassword: passwordData.newPassword,
     }))
       .unwrap()
       .then(() => {
-        navigate("/password-changed");
+        toast.success("Password changed successfully!") // ✅ New toast message
+        setPasswordData({
+          oldPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
       })
-      .catch(() => {});
-  };
+      .catch(() => {
+        toast.error("Failed to change password.")
+      })
+  }
 
   return (
     <div className="profile-container">
@@ -120,16 +136,14 @@ const Profile = () => {
           <form onSubmit={handleProfileSubmit} className="profile-form-container">
             <h2>Personal Information</h2>
             {profileSuccess && <div className="success-message">Profile updated!</div>}
-            {error          && <div className="error-message">{error}</div>}
+            {error && <div className="error-message">{error}</div>}
 
-            {/* Email (read‑only) */}
             <div className="form-group">
               <label>Email</label>
               <input type="email" value={user?.email || ""} disabled className="disabled" />
               <small>Email cannot be changed</small>
             </div>
 
-            {/* First & Last Name */}
             <div className="form-row">
               <div className="form-group">
                 <label>First Name</label>
@@ -155,7 +169,6 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Phone Number */}
             <div className="form-group">
               <label>Phone Number</label>
               <input
@@ -167,11 +180,7 @@ const Profile = () => {
               {formErrors.phone && <span className="error">{formErrors.phone}</span>}
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={status === "loading"}
-            >
+            <button type="submit" className="btn btn-primary" disabled={status === "loading"}>
               {status === "loading" ? "Saving..." : "Save Changes"}
             </button>
           </form>
@@ -219,18 +228,14 @@ const Profile = () => {
               )}
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={status === "loading"}
-            >
+            <button type="submit" className="btn btn-primary" disabled={status === "loading"}>
               {status === "loading" ? "Changing..." : "Change Password"}
             </button>
           </form>
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Profile;
+export default Profile
