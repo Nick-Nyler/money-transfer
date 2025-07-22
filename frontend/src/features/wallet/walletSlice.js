@@ -12,7 +12,7 @@ export const fetchWalletBalance = createAsyncThunk(
     try {
       return await api.getWalletBalance()
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.message || "Failed to fetch balance")
     }
   }
 )
@@ -24,7 +24,7 @@ export const initiateStk = createAsyncThunk(
     try {
       return await api.addFunds(amount, phone_number) // POST /api/wallet/add-funds
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.message || "Failed to initiate STK")
     }
   }
 )
@@ -36,7 +36,7 @@ export const pollTxnStatus = createAsyncThunk(
     try {
       return await api.getTxnStatus(checkoutRequestID) // GET /api/wallet/tx-status/:id
     } catch (err) {
-      return rejectWithValue(err.message)
+      return rejectWithValue(err.message || "Poll failed")
     }
   }
 )
@@ -45,7 +45,7 @@ export const pollTxnStatus = createAsyncThunk(
 const initialState = {
   wallet: null,
 
-  status: "idle",          // general fetching state
+  status: "idle",          // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null,
 
   // STK flow state
@@ -103,7 +103,8 @@ const walletSlice = createSlice({
 
       // ── pollTxnStatus ──
       .addCase(pollTxnStatus.fulfilled, (state, action) => {
-        if (action.payload.status !== "pending") {
+        const st = action.payload?.status
+        if (st !== "pending") {
           state.polling = false
           state.pendingCheckoutId = null
         }

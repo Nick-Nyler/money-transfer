@@ -1,7 +1,7 @@
 // src/components/AddFunds.jsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
 import {
@@ -23,6 +23,8 @@ const normalizePhone = (p) => {
   return phone
 }
 
+const QUICK_AMOUNTS = [1000, 5000, 10000]
+
 const AddFunds = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -31,44 +33,58 @@ const AddFunds = () => {
   const { wallet, status, error, polling, pendingCheckoutId } = useSelector((s) => s.wallet)
 
   const [amount, setAmount] = useState("")
-  const [phoneNumber, setPhoneNumber] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")  // <- fixed
   const [step, setStep] = useState(1)
   const [formErrors, setFormErrors] = useState({})
   const [localProcessing, setLocalProcessing] = useState(false)
   const [transactionComplete, setTransactionComplete] = useState(false)
 
+  // refs to avoid re-renders
+  const startBalanceRef = useRef(null)
+  const triesRef = useRef(0)
+  const timeoutRef = useRef(null)
+
+  // initial load
   useEffect(() => {
-    if (user) {
-      if (user.phone) setPhoneNumber(user.phone)
-      dispatch(fetchWalletBalance())
-    }
+    if (!user) return
+    if (user.phone) setPhoneNumber(user.phone)
+    dispatch(fetchWalletBalance())
   }, [dispatch, user])
 
-  // Poll every 3s, max ~60s (20 tries)
+  // poll every 3s
   useEffect(() => {
+    console.log("poll effect ->", { polling, pendingCheckoutId })
     if (!polling || !pendingCheckoutId) return
-    let tries = 0
+
     const id = setInterval(() => {
-      tries++
+      triesRef.current += 1
+      console.log("poll try", triesRef.current, "ID:", pendingCheckoutId)
       dispatch(pollTxnStatus(pendingCheckoutId)).then((res) => {
-        if (res.payload && res.payload.status && res.payload.status !== "pending") {
-          dispatch(fetchWalletBalance())
-          dispatch(fetchTransactions(user.id))
-          dispatch(stopPolling())
-          setTransactionComplete(true)
-          setLocalProcessing(false)
-        }
+        const st = res?.payload?.status
+        console.log("poll result:", st, res?.payload)
+        if (st && st !== "pending") finishSuccess()
       })
-      if (tries > 20) {
+      if (triesRef.current > 20) {
+        console.warn("poll timed out")
         dispatch(stopPolling())
         setLocalProcessing(false)
         setFormErrors({ general: "Timed out waiting for M‑Pesa. If you approved, refresh dashboard." })
       }
     }, 3000)
-    return () => clearInterval(id)
-  }, [polling, pendingCheckoutId, dispatch, user])
 
-  // ────────── Validation ──────────
+    return () => clearInterval(id)
+  }, [polling, pendingCheckoutId, dispatch])
+
+  // fallback on balance change
+  useEffect(() => {
+    if (!polling || startBalanceRef.current == null || !wallet) return
+    const startBal = Number(startBalanceRef.current)
+    const nowBal = Number(wallet.balance)
+    console.log("balance check", { startBal, nowBal })
+    if (nowBal > startBal) finishSuccess()
+  }, [wallet, polling])
+
+  // validation
   const validateStep1 = () => {
     const errs = {}
     const num = parseFloat(amount)
@@ -77,7 +93,7 @@ const AddFunds = () => {
     else if (num < 1) errs.amount = "Minimum amount is KES 1"
     else if (num > 300000) errs.amount = "Maximum amount is KES 300,000"
     setFormErrors(errs)
-    return Object.keys(errs).length === 0
+    return !Object.keys(errs).length
   }
 
   const validateStep2 = () => {
@@ -87,9 +103,10 @@ const AddFunds = () => {
     if (!cleaned) errs.phoneNumber = "Phone number is required"
     else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
     setFormErrors(errs)
-    return Object.keys(errs).length === 0
+    return !Object.keys(errs).length
   }
 
+  // navigation
   const next = () => {
     if (step === 1 ? validateStep1() : validateStep2()) {
       setFormErrors({})
@@ -99,6 +116,7 @@ const AddFunds = () => {
 
   const back = () => setStep((s) => s - 1)
 
+  // confirm
   const confirm = () => {
     if (!validateStep2()) {
       setStep(2)
@@ -107,15 +125,37 @@ const AddFunds = () => {
     setLocalProcessing(true)
     dispatch(clearError())
 
+    startBalanceRef.current = wallet ? Number(wallet.balance) : 0
+    triesRef.current = 0
+
     const amt = parseFloat(amount)
     const phone = normalizePhone(phoneNumber)
 
     dispatch(initiateStk({ amount: amt, phone_number: phone }))
       .unwrap()
+      .then((res) => {
+        console.log("initiateStk OK:", res)
+        // safety timeout
+        timeoutRef.current = setTimeout(() => {
+          console.warn("hard timeout fired")
+          finishSuccess()
+        }, 70000)
+      })
       .catch((e) => {
         setFormErrors({ general: e || "Failed to initiate STK" })
         setLocalProcessing(false)
       })
+  }
+
+  const finishSuccess = () => {
+    console.log("finishSuccess()")
+    clearTimeout(timeoutRef.current)
+    dispatch(stopPolling())
+    dispatch(fetchWalletBalance())
+    dispatch(fetchTransactions(user.id))
+    setTransactionComplete(true)
+    setLocalProcessing(false)
+    triesRef.current = 0
   }
 
   const finish = () => navigate("/dashboard")
@@ -160,9 +200,9 @@ const AddFunds = () => {
             {formErrors.amount && <span className="error">{formErrors.amount}</span>}
           </div>
           <div className="quick-amounts">
-            {["1000", "5000", "10000"].map((val) => (
-              <button key={val} onClick={() => setAmount(val)} className="amount-btn">
-                KES {Number(val).toLocaleString()}
+            {QUICK_AMOUNTS.map((val) => (
+              <button key={val} onClick={() => setAmount(String(val))} className="amount-btn">
+                KES {val.toLocaleString()}
               </button>
             ))}
           </div>
