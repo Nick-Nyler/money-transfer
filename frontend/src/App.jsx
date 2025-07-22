@@ -1,4 +1,3 @@
-// src/App.jsx
 "use client"
 
 import { useEffect } from "react"
@@ -21,9 +20,10 @@ import Transactions from "./components/Transactions"
 import AdminDashboard from "./components/admin/AdminDashboard"
 import UserManagement from "./components/admin/UserManagement"
 import TransactionMonitoring from "./components/admin/TransactionMonitoring"
-import PasswordChanged from "./components/PasswordChanged"      // ← new
 import Navigation from "./components/common/Navigation"
 import { checkAuth } from "./features/auth/authSlice"
+import { ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 import "./App.css"
 
 function App() {
@@ -51,33 +51,27 @@ function App() {
         {isAuthenticated && <Navigation />}
         <div className="content-container">
           <Routes>
-            {/* Public */}
+            {/* Public Routes */}
             <Route
               path="/"
               element={
-                !isAuthenticated
-                  ? <LandingPage />
-                  : <Navigate to="/dashboard" />
+                !isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />
               }
             />
             <Route
               path="/login"
               element={
-                !isAuthenticated
-                  ? <Login />
-                  : <Navigate to="/dashboard" />
+                !isAuthenticated ? <Login /> : <Navigate to="/dashboard" />
               }
             />
             <Route
               path="/register"
               element={
-                !isAuthenticated
-                  ? <Register />
-                  : <Navigate to="/dashboard" />
+                !isAuthenticated ? <Register /> : <Navigate to="/dashboard" />
               }
             />
 
-            {/* Protected */}
+            {/* Protected Routes */}
             <Route
               path="/dashboard"
               element={
@@ -127,7 +121,7 @@ function App() {
               }
             />
 
-            {/* Admin */}
+            {/* Admin Only */}
             <Route
               path="/admin"
               element={
@@ -153,21 +147,14 @@ function App() {
               }
             />
 
-            {/* New: Password Changed confirmation */}
-            <Route
-              path="/password-changed"
-              element={
-                <ProtectedRoute>
-                  <PasswordChanged />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Catch All */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
       </div>
+
+      {/* Toast container for success/error messages */}
+      <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   )
 }
