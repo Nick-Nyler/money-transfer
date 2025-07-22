@@ -2296,6 +2296,11 @@
     color: #3b82f6;
     border: 1px solid #3b82f6;
   }
+
+  .btn-activate {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2496,6 +2501,11 @@
     flex: 1;
     justify-content: space-around;
   }
+
+  .btn-activate {
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 /* Toggle button next to balance */
@@ -2583,4 +2593,9 @@
 .profile-content {
   position: relative;
   z-index: 1;
+}
+
+.btn-activate {
+  display: flex;
+  gap: 0.5rem;
 }
