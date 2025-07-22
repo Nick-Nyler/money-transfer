@@ -63,9 +63,15 @@ export const api = {
     return { wallet: response };
   },
 
-  addFunds: async (amount) => {
+  // Now includes phone_number for M-Pesa STK push
+  addFunds: async (amount, phone_number) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/wallet/add-funds", "POST", { amount }, token);
+    const response = await _callApi(
+      "/wallet/add-funds",
+      "POST",
+      { amount, phone_number },
+      token
+    );
     return { wallet: response };
   },
 

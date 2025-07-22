@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { api } from "../../api"
 import { logout } from "../auth/authSlice"
 
-// Async thunks
+// Fetch wallet balance
 export const fetchWalletBalance = createAsyncThunk(
   "wallet/fetchBalance",
   async (_, { rejectWithValue }) => {
@@ -15,11 +15,12 @@ export const fetchWalletBalance = createAsyncThunk(
   }
 )
 
+// Add funds (now with phone_number for M‑Pesa)
 export const addFunds = createAsyncThunk(
   "wallet/addFunds",
-  async ({ amount }, { rejectWithValue }) => {
+  async ({ amount, phone_number }, { rejectWithValue }) => {
     try {
-      return await api.addFunds(amount)
+      return await api.addFunds(amount, phone_number)
     } catch (error) {
       return rejectWithValue(error.message)
     }
@@ -47,7 +48,7 @@ const walletSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch wallet balance
+      // fetchBalance
       .addCase(fetchWalletBalance.pending, (state) => {
         state.status = "loading"
         state.error = null
@@ -61,21 +62,21 @@ const walletSlice = createSlice({
         state.error = action.payload
       })
 
-      // Add funds
+      // addFunds
       .addCase(addFunds.pending, (state) => {
         state.status = "loading"
         state.error = null
       })
-      .addCase(addFunds.fulfilled, (state, action) => {
+      .addCase(addFunds.fulfilled, (state) => {
         state.status = "succeeded"
-        state.wallet = action.payload.wallet
+        // wallet top‑up happens via callback; don't update here
       })
       .addCase(addFunds.rejected, (state, action) => {
         state.status = "failed"
         state.error = action.payload
       })
 
-      // Clear wallet on logout
+      // clear on logout
       .addCase(logout.fulfilled, (state) => {
         state.wallet = null
         state.status = "idle"

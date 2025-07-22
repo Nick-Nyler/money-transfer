@@ -9,6 +9,14 @@ import { fetchTransactions } from "../features/transactions/transactionsSlice"
 import WalletCard from "./common/WalletCard"
 import LoadingSpinner from "./common/LoadingSpinner"
 
+// normalize 07xxxx or +2547xxxx into 2547xxxx
+const normalizePhone = (p) => {
+  let phone = p.trim()
+  if (phone.startsWith("+")) phone = phone.slice(1)
+  if (phone.startsWith("0")) phone = "254" + phone.slice(1)
+  return phone
+}
+
 const AddFunds = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -25,47 +33,42 @@ const AddFunds = () => {
   useEffect(() => {
     if (user && user.phone) {
       setPhoneNumber(user.phone)
-      dispatch(fetchWalletBalance(user.id))
+      dispatch(fetchWalletBalance())
     }
   }, [dispatch, user])
 
-  // STEP 1 VALIDATION
   const validateStep1 = () => {
-    const errors = {}
+    const errs = {}
     const num = parseFloat(amount)
-    if (!amount) errors.amount = "Amount is required"
-    else if (isNaN(num)) errors.amount = "Amount must be a number"
-    else if (num <= 0) errors.amount = "Amount must be greater than 0"
-    else if (num < 100) errors.amount = "Minimum amount is KES 100"
-    else if (num > 300000) errors.amount = "Maximum amount is KES 300,000"
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
+    if (!amount) errs.amount = "Amount is required"
+    else if (isNaN(num)) errs.amount = "Amount must be a number"
+    else if (num < 1) errs.amount = "Minimum amount is KES 1"
+    else if (num > 300000) errs.amount = "Maximum amount is KES 300,000"
+    setFormErrors(errs)
+    return !Object.keys(errs).length
   }
-
-  // STEP 2 MPESA‑SPECIFIC VALIDATION
-  // Accepts either: 07XXXXXXXX or +2547XXXXXXXX (total 10 or 13 chars)
-  const mpesaRe = /^(?:07\d{8}|\+2547\d{8})$/
 
   const validateStep2 = () => {
-    const errors = {}
+    const errs = {}
     const cleaned = phoneNumber.replace(/\s/g, "")
-    if (!phoneNumber) errors.phoneNumber = "Phone number is required"
-    else if (!mpesaRe.test(cleaned))
-      errors.phoneNumber = "Phone number is invalid"
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
+    const re = /^(?:07\d{8}|\+2547\d{8})$/
+    if (!cleaned) errs.phoneNumber = "Phone number is required"
+    else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
+    setFormErrors(errs)
+    return !Object.keys(errs).length
   }
 
-  const handleNextStep = () => {
-    if (step === 1 && validateStep1()) setStep(2)
-    else if (step === 2 && validateStep2()) setStep(3)
+  const next = () => {
+    if (step === 1 ? validateStep1() : validateStep2()) {
+      setFormErrors({})
+      setStep((s) => s + 1)
+    }
   }
-  const handlePreviousStep = () => setStep((s) => s - 1)
 
-  const simulateMpesaPayment = () => {
-    // Block if MPesa number not valid
-    if (!mpesaRe.test(phoneNumber.replace(/\s/g, ""))) {
-      setFormErrors({ phoneNumber: "Phone number is invalid" })
+  const back = () => setStep((s) => s - 1)
+
+  const confirm = () => {
+    if (!validateStep2()) {
       setStep(2)
       return
     }
@@ -73,27 +76,27 @@ const AddFunds = () => {
     setIsProcessing(true)
     setFormErrors({})
 
-    setTimeout(() => {
-      const numAmount = parseFloat(amount)
-      dispatch(addFunds({ userId: user.id, amount: numAmount }))
-        .unwrap()
-        .then(() => {
-          dispatch(fetchWalletBalance(user.id))
-          dispatch(fetchTransactions(user.id))
-          setIsProcessing(false)
-          setTransactionComplete(true)
-        })
-        .catch(() => setIsProcessing(false))
-    }, 3000)
+    const num = parseFloat(amount)
+    const phone = normalizePhone(phoneNumber)
+
+    dispatch(addFunds({ amount: num, phone_number: phone }))
+      .unwrap()
+      .then(() => {
+        dispatch(fetchWalletBalance())
+        dispatch(fetchTransactions())
+        setTransactionComplete(true)
+      })
+      .catch((e) => {
+        setFormErrors({ general: e.message || e })
+      })
+      .finally(() => setIsProcessing(false))
   }
 
-  const handleFinish = () => navigate("/dashboard")
+  const finish = () => navigate("/dashboard")
 
-  if (status === "loading" && !isProcessing) {
-    return <LoadingSpinner />
-  }
+  if (status === "loading" && !isProcessing) return <LoadingSpinner />
 
-  const displayAmount = parseFloat(amount) || 0
+  const displayAmt = parseFloat(amount) || 0
 
   return (
     <div className="add-funds-container">
@@ -101,143 +104,94 @@ const AddFunds = () => {
       {wallet && <WalletCard wallet={wallet} />}
 
       <div className="stepper">
-        <div className={`step ${step >= 1 ? "active" : ""}`}>
-          <div className="step-number">1</div>
-          <div className="step-label">Amount</div>
-        </div>
-        <div className={`step ${step >= 2 ? "active" : ""}`}>
-          <div className="step-number">2</div>
-          <div className="step-label">M-Pesa</div>
-        </div>
-        <div className={`step ${step >= 3 ? "active" : ""}`}>
-          <div className="step-number">3</div>
-          <div className="step-label">Confirm</div>
-        </div>
+        {[1, 2, 3].map((n) => (
+          <div key={n} className={`step ${step >= n ? "active" : ""}`}>
+            <div className="step-number">{n}</div>
+            <div className="step-label">{["Amount", "M-Pesa", "Confirm"][n - 1]}</div>
+          </div>
+        ))}
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {(error || formErrors.general) && (
+        <div className="error-message">{formErrors.general || error}</div>
+      )}
 
-      <div className="add-funds-form">
-        {step === 1 && (
-          <div className="step-content">
-            <h2>Enter Amount</h2>
-            <p>How much would you like to add to your wallet?</p>
-            <div className="form-group">
-              <label htmlFor="amount">Amount (KES)</label>
-              <input
-                type="number"
-                id="amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                min="100"
-                max="300000"
-              />
-              {formErrors.amount && <span className="error">{formErrors.amount}</span>}
-            </div>
-            <div className="quick-amounts">
-              <button type="button" className="amount-btn" onClick={() => setAmount("1000")}>
-                KES 1,000
-              </button>
-              <button type="button" className="amount-btn" onClick={() => setAmount("5000")}>
-                KES 5,000
-              </button>
-              <button type="button" className="amount-btn" onClick={() => setAmount("10000")}>
-                KES 10,000
-              </button>
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-primary" onClick={handleNextStep}>
-                Next
-              </button>
-            </div>
+      {/* STEP 1 */}
+      {step === 1 && (
+        <div className="step-content">
+          <h2>Enter Amount</h2>
+          <div className="form-group">
+            <label>Amount (KES)</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Enter amount"
+              min="1"
+              max="300000"
+            />
+            {formErrors.amount && <span className="error">{formErrors.amount}</span>}
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="step-content">
-            <h2>M-Pesa Details</h2>
-            <p>Enter the phone number to receive M-Pesa prompt</p>
-            <div className="form-group">
-              <label htmlFor="phoneNumber">Phone Number</label>
-              <input
-                type="tel"
-                id="phoneNumber"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+2547XXXXXXXX"
-              />
-              {formErrors.phoneNumber && <span className="error">{formErrors.phoneNumber}</span>}
-            </div>
-            <div className="form-actions">
-              <button type="button" className="btn btn-outline" onClick={handlePreviousStep}>
-                Back
+          <div className="quick-amounts">
+            {["1000", "5000", "10000"].map((val) => (
+              <button key={val} onClick={() => setAmount(val)} className="amount-btn">
+                KES {Number(val).toLocaleString()}
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleNextStep}>
-                Next
-              </button>
-            </div>
+            ))}
           </div>
-        )}
+          <button className="btn btn-primary" onClick={next}>Next</button>
+        </div>
+      )}
 
-        {step === 3 && !isProcessing && !transactionComplete && (
-          <div className="step-content">
-            <h2>Confirm Payment</h2>
-            <div className="confirmation-details">
-              <div className="detail-row">
-                <span>Amount:</span>
-                <span>KES {displayAmount.toLocaleString()}</span>
-              </div>
-              <div className="detail-row">
-                <span>Phone Number:</span>
-                <span>{phoneNumber}</span>
-              </div>
-              <div className="detail-row">
-                <span>Payment Method:</span>
-                <span>M-Pesa</span>
-              </div>
-            </div>
-
-            <p className="info-text">
-              Click "Confirm" to initiate the M-Pesa payment. You will receive a prompt on your phone.
-            </p>
-            <div className="form-actions">
-              <button type="button" className="btn btn-outline" onClick={handlePreviousStep}>
-                Back
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={simulateMpesaPayment}
-              >
-                Confirm
-              </button>
-            </div>
+      {/* STEP 2 */}
+      {step === 2 && (
+        <div className="step-content">
+          <h2>M-Pesa Details</h2>
+          <div className="form-group">
+            <label>Phone Number</label>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+2547XXXXXXXX"
+            />
+            {formErrors.phoneNumber && <span className="error">{formErrors.phoneNumber}</span>}
           </div>
-        )}
-
-        {isProcessing && (
-          <div className="step-content">
-            <LoadingSpinner />
-            <p>Please wait while we process your payment...</p>
+          <div className="form-actions">
+            <button className="btn btn-outline" onClick={back}>Back</button>
+            <button className="btn btn-primary" onClick={next}>Next</button>
           </div>
-        )}
+        </div>
+      )}
 
-        {transactionComplete && (
-          <div className="step-content">
-            <div className="success">
-              <div className="success-icon">✓</div>
-              <h2>Payment Successful!</h2>
-              <p>KES {displayAmount.toLocaleString()} has been added to your wallet.</p>
-              <div className="form-actions">
-                <button type="button" className="btn btn-primary" onClick={handleFinish}>
-                  Back to Dashboard
-                </button>
-              </div>
-            </div>
+      {/* STEP 3 */}
+      {step === 3 && !isProcessing && !transactionComplete && (
+        <div className="step-content">
+          <h2>Confirm Payment</h2>
+          <p>Amount: KES {displayAmt.toLocaleString()}</p>
+          <p>Phone: {phoneNumber}</p>
+          <div className="form-actions">
+            <button className="btn btn-outline" onClick={back}>Back</button>
+            <button className="btn btn-primary" onClick={confirm}>Confirm</button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="step-content">
+          <LoadingSpinner />
+          <p>Sending STK push…</p>
+        </div>
+      )}
+
+      {transactionComplete && (
+        <div className="step-content">
+          <h2>Check your phone for the M‑Pesa prompt!</h2>
+          <button className="btn btn-primary" onClick={finish}>
+            Back to Dashboard
+          </button>
+        </div>
+      )}
     </div>
   )
 }
