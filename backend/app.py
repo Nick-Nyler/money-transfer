@@ -13,35 +13,41 @@ from routes import register_blueprints
 load_dotenv()
 
 
+def _norm(origin: str | None) -> str:
+    if not origin:
+        return ""
+    return origin.rstrip("/").lower()
+
+
 def create_app():
     app = Flask(__name__)
-    print(">>> CORS patch loaded")  # sanity check in Render logs
+    print(">>> CORS patch loaded")
     app.config.from_object(Config)
 
-    # ─── CORS ────────────────────────────────────────────────────────────────
-    # ALLOWED_ORIGINS="http://localhost:5173,https://money-transfer-4bt2.onrender.com"
-    allowed_origins = [
-        o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if o.strip()
-    ]
+    # ---------- CORS ----------
+    raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    allowed_origins = {_norm(o) for o in raw_origins if o.strip()}
+    # If you ever want to allow everything, set ALLOWED_ORIGINS="*"
+    allow_all = "*" in allowed_origins
 
-    # Flask-CORS handles normal responses
+    # Let flask-cors decorate “normal” responses
     CORS(
         app,
-        resources={r"/api/*": {"origins": allowed_origins}},
+        resources={r"/api/*": {"origins": list(allowed_origins) if not allow_all else "*"}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
         expose_headers=["Authorization"],
-        methods=["GET", POST := "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
-    # Short-circuit preflight so headers are guaranteed
+    # Manually answer OPTIONS so headers are guaranteed
     @app.before_request
-    def handle_preflight():
+    def preflight():
         if request.method == "OPTIONS" and request.path.startswith("/api/"):
-            origin = request.headers.get("Origin")
+            origin = _norm(request.headers.get("Origin"))
             resp = make_response("", 204)
-            if origin in allowed_origins:
-                resp.headers["Access-Control-Allow-Origin"] = origin
+            if allow_all or origin in allowed_origins:
+                resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
                 resp.headers["Vary"] = "Origin"
                 resp.headers["Access-Control-Allow-Credentials"] = "true"
                 resp.headers["Access-Control-Allow-Headers"] = request.headers.get(
@@ -50,36 +56,33 @@ def create_app():
                 resp.headers["Access-Control-Allow-Methods"] = request.headers.get(
                     "Access-Control-Request-Method", "GET,POST,PUT,PATCH,DELETE,OPTIONS"
                 )
-            return resp  # stop request chain
+            return resp
 
-    # Add headers to every response (incl. errors)
+    # Add headers to everything else (including errors)
     @app.after_request
-    def add_cors_headers(resp):
-        origin = request.headers.get("Origin")
-        if origin in allowed_origins and request.path.startswith("/api/"):
-            resp.headers["Access-Control-Allow-Origin"] = origin
-            resp.headers["Vary"] = "Origin"
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    def add_cors(resp):
+        if request.path.startswith("/api/"):
+            origin = _norm(request.headers.get("Origin"))
+            if allow_all or origin in allowed_origins:
+                resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+                resp.headers["Vary"] = "Origin"
+                resp.headers["Access-Control-Allow-Credentials"] = "true"
+                resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+                resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         return resp
-    # ─────────────────────────────────────────────────────────────────────────
+    # -----------------------------------------
 
-    # Extensions
+    # Extensions / blueprints
     db.init_app(app)
     ma.init_app(app)
-
-    # Blueprints
     register_blueprints(app)
 
-    # Healthcheck
     @app.route("/api/health")
     def health():
         return jsonify({"status": "ok"}), 200
 
-    # Errors
     @app.errorhandler(404)
-    def not_found_error(_):
+    def not_found(_):
         return jsonify({"error": "Not Found"}), 404
 
     @app.errorhandler(500)
