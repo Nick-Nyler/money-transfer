@@ -34,7 +34,7 @@ function App() {
     dispatch(checkAuth())
   }, [dispatch])
 
-  // Protected route component
+ // Protected route component 
   const ProtectedRoute = ({ children, requireAdmin }) => {
     if (!isAuthenticated) {
       return <Navigate to="/login" />
