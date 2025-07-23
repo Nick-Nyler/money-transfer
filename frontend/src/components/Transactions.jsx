@@ -62,6 +62,7 @@ const Transactions = () => {
     return true
   })
 
+  
   const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     if (sorting.field === "created_at_formatted") {
       // Handle missing or invalid created_at_formatted for sorting
