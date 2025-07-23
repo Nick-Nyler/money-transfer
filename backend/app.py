@@ -1,6 +1,6 @@
 # backend/app.py
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
@@ -10,7 +10,6 @@ from extensions import db, ma
 from database.db_init import init_db
 from routes import register_blueprints
 
-# Load environment variables from .env (local) or Render dashboard (prod)
 load_dotenv()
 
 
@@ -18,18 +17,52 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ─── CORS (Frontend ↔ Backend peace treaty) ────────────────────────────────
-    # Comma‑separated list in env: ALLOWED_ORIGINS="http://localhost:5173,https://money-transfer-4bt2.onrender.com"
-    allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    # ─── CORS ────────────────────────────────────────────────────────────────
+    # ALLOWED_ORIGINS="http://localhost:5173,https://money-transfer-4bt2.onrender.com"
+    allowed_origins = [
+        o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if o.strip()
+    ]
 
+    # Let flask-cors add headers on normal responses
     CORS(
         app,
         resources={r"/api/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
         expose_headers=["Authorization"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
-    # ───────────────────────────────────────────────────────────────────────────
+
+    # Guarantee headers on ALL responses (incl. errors)
+    @app.after_request
+    def add_cors_headers(resp):
+        origin = request.headers.get("Origin")
+        if origin in allowed_origins and request.path.startswith("/api/"):
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Vary"] = "Origin"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return resp
+
+    # Short-circuit preflight so Chrome doesn't whine
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS" and request.path.startswith("/api/"):
+            resp = make_response("", 204)
+            origin = request.headers.get("Origin")
+            if origin in allowed_origins:
+                resp.headers["Access-Control-Allow-Origin"] = origin
+                resp.headers["Vary"] = "Origin"
+                resp.headers["Access-Control-Allow-Credentials"] = "true"
+                resp.headers["Access-Control-Allow-Headers"] = request.headers.get(
+                    "Access-Control-Request-Headers", "Content-Type, Authorization"
+                )
+                resp.headers["Access-Control-Allow-Methods"] = request.headers.get(
+                    "Access-Control-Request-Method", "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+                )
+            return resp
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Initialize extensions
     db.init_app(app)
@@ -38,7 +71,7 @@ def create_app():
     # Register all blueprints
     register_blueprints(app)
 
-    # Optional tiny health check (nice for Render):
+    # Health check
     @app.route("/api/health")
     def health():
         return jsonify({"status": "ok"}), 200
