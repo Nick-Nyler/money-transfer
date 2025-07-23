@@ -4,6 +4,7 @@ import { logout } from "../auth/authSlice"
 import { updateWalletBalance } from "../wallet/walletSlice"
 
 // Async thunks
+
 export const fetchTransactions = createAsyncThunk("transactions/fetchAll", async (userId, { rejectWithValue }) => {
   try {
     return await api.getTransactions(userId)
@@ -11,6 +12,7 @@ export const fetchTransactions = createAsyncThunk("transactions/fetchAll", async
     return rejectWithValue(error.message)
   }
 })
+
 
 export const sendMoney = createAsyncThunk("transactions/send", async (sendData, { rejectWithValue, dispatch }) => {
   try {

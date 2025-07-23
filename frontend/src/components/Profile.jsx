@@ -75,6 +75,7 @@ const Profile = () => {
     return !Object.keys(errs).length
   }
 
+  
   const handleProfileSubmit = (e) => {
     e.preventDefault()
     if (!validateProfileForm()) return

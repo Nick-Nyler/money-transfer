@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { api } from "../../api"
 import { logout } from "../auth/authSlice"
 
+
 // Async thunks
 export const fetchBeneficiaries = createAsyncThunk("beneficiaries/fetchAll", async (userId, { rejectWithValue }) => {
   try {
