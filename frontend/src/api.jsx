@@ -1,26 +1,26 @@
 // src/api.js
-// Centralized API client. Uses Render in prod, localhost in dev. Avoids double “/api”.
+// Centralized API client. Prod → Render URL (VITE_API_BASE_URL), Dev → localhost.
+// Prevents double "/api" and handles tokens + CSV downloads cleanly.
 
-// --- Base URL resolution ----------------------------------------------------
+// ---------- Base URL ----------
 const raw =
   import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL || // legacy env name
+  import.meta.env.VITE_API_URL || // legacy name
   "";
 
 const stripTrailing = (s) => s.replace(/\/+$/, "");
 const hasApiSuffix = (s) => /\/api\/?$/.test(s);
 
 const baseRoot = raw ? stripTrailing(raw) : "http://localhost:5000";
-const BASE_URL = hasApiSuffix(baseRoot) ? stripTrailing(baseRoot) : `${baseRoot}/api`;
+export const BASE_URL = hasApiSuffix(baseRoot) ? stripTrailing(baseRoot) : `${baseRoot}/api`;
 
-// --- Helpers ----------------------------------------------------------------
+// ---------- Helpers ----------
 const _getToken = () => localStorage.getItem("authToken");
 const _storeAuth = ({ token, user }) => {
   if (token) localStorage.setItem("authToken", token);
   if (user) localStorage.setItem("currentUser", JSON.stringify(user));
 };
 
-// Generic fetch wrapper
 const _callApi = async (endpoint, method = "GET", data = null, token = null, extraHeaders = {}) => {
   const headers = { "Content-Type": "application/json", ...extraHeaders };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -41,7 +41,7 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null, ext
   return payload;
 };
 
-// --- API surface ------------------------------------------------------------
+// ---------- API surface ----------
 export const api = {
   // Auth
   async login(email, password) {
@@ -148,8 +148,8 @@ export const api = {
 
   async getUserDetails(userId) {
     return await _callApi(`/admin/users/${userId}`, "GET", null, _getToken());
-  },
-
+    },
+  
   async updateUserStatus(userId, role) {
     return await _callApi(`/admin/users/${userId}/status`, "PATCH", { role }, _getToken());
   },
