@@ -12,6 +12,7 @@ export const fetchTransactions = createAsyncThunk("transactions/fetchAll", async
   }
 })
 
+
 export const sendMoney = createAsyncThunk("transactions/send", async (sendData, { rejectWithValue, dispatch }) => {
   try {
     const result = await api.sendMoney(sendData)
