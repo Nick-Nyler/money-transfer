@@ -70,6 +70,7 @@ def send_money(user_id, beneficiary_id, amount, description):
     db.session.add(sender_transaction)
 
     # If the beneficiary is a registered user, credit their wallet
+   
     recipient_user = None
     if beneficiary.phone:
         recipient_user = User.query.filter_by(phone=beneficiary.phone).first()
