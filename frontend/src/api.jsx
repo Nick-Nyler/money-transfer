@@ -1,12 +1,24 @@
 // src/api.js
-// Centralized API client. Points to Render in prod, localhost in dev.
+// Centralized API client. Uses Render in prod, localhost in dev. Avoids double “/api”.
 
-const RAW_BASE =
+// --- Base URL resolution ----------------------------------------------------
+const raw =
   import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL || // legacy
-  ""; // fallback to empty -> will use localhost below
+  import.meta.env.VITE_API_URL || // legacy env name
+  "";
 
-const BASE_URL = (RAW_BASE ? RAW_BASE.replace(/\/$/, "") : "http://localhost:5000") + "/api";
+const stripTrailing = (s) => s.replace(/\/+$/, "");
+const hasApiSuffix = (s) => /\/api\/?$/.test(s);
+
+const baseRoot = raw ? stripTrailing(raw) : "http://localhost:5000";
+const BASE_URL = hasApiSuffix(baseRoot) ? stripTrailing(baseRoot) : `${baseRoot}/api`;
+
+// --- Helpers ----------------------------------------------------------------
+const _getToken = () => localStorage.getItem("authToken");
+const _storeAuth = ({ token, user }) => {
+  if (token) localStorage.setItem("authToken", token);
+  if (user) localStorage.setItem("currentUser", JSON.stringify(user));
+};
 
 // Generic fetch wrapper
 const _callApi = async (endpoint, method = "GET", data = null, token = null, extraHeaders = {}) => {
@@ -19,7 +31,6 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null, ext
     body: data ? JSON.stringify(data) : null,
   });
 
-  // Blob/csv endpoints won't be JSON
   const isJson = res.headers.get("content-type")?.includes("application/json");
   const payload = isJson ? await res.json().catch(() => ({})) : await res.blob();
 
@@ -30,15 +41,9 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null, ext
   return payload;
 };
 
-// Token helpers
-const _getToken = () => localStorage.getItem("authToken");
-const _storeAuth = ({ token, user }) => {
-  if (token) localStorage.setItem("authToken", token);
-  if (user) localStorage.setItem("currentUser", JSON.stringify(user));
-};
-
+// --- API surface ------------------------------------------------------------
 export const api = {
-  // ---------- Auth ----------
+  // Auth
   async login(email, password) {
     const { token, user } = await _callApi("/auth/login", "POST", { email, password });
     _storeAuth({ token, user });
@@ -72,7 +77,7 @@ export const api = {
     return await _callApi("/auth/profile/password", "PUT", { oldPassword, newPassword }, _getToken());
   },
 
-  // ---------- Wallet ----------
+  // Wallet
   async getWalletBalance() {
     const wallet = await _callApi("/wallet/balance", "GET", null, _getToken());
     return { wallet };
@@ -102,7 +107,7 @@ export const api = {
     return true;
   },
 
-  // ---------- Beneficiaries ----------
+  // Beneficiaries
   async getBeneficiaries() {
     const { beneficiaries } = await _callApi("/beneficiaries/", "GET", null, _getToken());
     return { beneficiaries };
@@ -118,7 +123,7 @@ export const api = {
     return { id };
   },
 
-  // ---------- Transactions ----------
+  // Transactions
   async getTransactions() {
     const { transactions } = await _callApi("/transactions/", "GET", null, _getToken());
     return { transactions };
@@ -130,7 +135,7 @@ export const api = {
     return { wallet, transaction };
   },
 
-  // ---------- Admin ----------
+  // Admin
   async getAllUsers() {
     const { users } = await _callApi("/admin/users", "GET", null, _getToken());
     return { users };
