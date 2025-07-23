@@ -15,6 +15,7 @@ const Register = () => {
     confirmPassword: "",
   })
 
+  
   const [formErrors, setFormErrors] = useState({})
   const dispatch = useDispatch()
   const { status, error } = useSelector((state) => state.auth)

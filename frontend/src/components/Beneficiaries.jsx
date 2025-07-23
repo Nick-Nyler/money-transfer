@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { fetchBeneficiaries, addBeneficiary, removeBeneficiary } from "../features/beneficiaries/beneficiariesSlice"
 import LoadingSpinner from "./common/LoadingSpinner"
 
+
 const Beneficiaries = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.auth)
