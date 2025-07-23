@@ -8,14 +8,14 @@ auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
 # --------------------------- helpers ---------------------------
 
-def _json(silent=True):
-    """Safely get JSON body."""
+def _json(silent: bool = True) -> dict:
+    """Safely get JSON body (never None)."""
     return request.get_json(silent=silent) or {}
 
-def _error(msg, code):
+def _error(msg: str, code: int):
     return jsonify({"error": msg}), code
 
-def _require_fields(data, fields):
+def _require_fields(data: dict, fields: list[str]):
     missing = [f for f in fields if not data.get(f)]
     if missing:
         raise ValueError(f"Missing fields: {', '.join(missing)}")
@@ -63,7 +63,6 @@ def login():
             return _error("Your account has been deactivated", 403)
         return jsonify({"user": user, "token": user["id"]}), 200
     except ValueError as e:
-        # bad creds or validation error from controller
         return _error(str(e), 401)
     except Exception:
         current_app.logger.exception("login crash")
@@ -73,7 +72,7 @@ def login():
 @auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
-    # nothing to do server-side with stateless tokens
+    # stateless token, so just tell the client to drop it
     return jsonify({"message": "Logged out successfully"}), 200
 
 
