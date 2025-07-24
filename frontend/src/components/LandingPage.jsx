@@ -241,6 +241,7 @@ const LandingPage = () => {
         </div>
       </section>
 
+     
       {/* Footer */}
       <footer className="landing-footer">
         <div className="footer-container">
