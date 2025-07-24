@@ -14,4 +14,3 @@ class Config:
     MPESA_ENVIRONMENT         = os.environ.get('MPESA_ENVIRONMENT', 'sandbox')  # 'sandbox' or 'production'
     MPESA_CALLBACK_URL        = os.environ.get('MPESA_CALLBACK_URL') or 'https://vii-kb-edited-gained.trycloudflare.com/api/mpesa/callback'
 
-
