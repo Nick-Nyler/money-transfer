@@ -97,14 +97,15 @@ const AddFunds = () => {
   }
 
   const validateStep2 = () => {
-    const errs = {}
-    const cleaned = phoneNumber.replace(/\s/g, "")
-    const re = /^(?:07\d{8}|2547\d{8}|\+2547\d{8})$/
-    if (!cleaned) errs.phoneNumber = "Phone number is required"
-    else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
-    setFormErrors(errs)
-    return !Object.keys(errs).length
-  }
+  const errs = {}
+  const cleaned = phoneNumber.replace(/\s/g, "")
+  const re = /^(?:0(7|1)\d{8}|254(7|1)\d{8}|\+254(7|1)\d{8})$/
+  if (!cleaned) errs.phoneNumber = "Phone number is required"
+  else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
+  setFormErrors(errs)
+  return !Object.keys(errs).length
+}
+
 
   // navigation
   const next = () => {

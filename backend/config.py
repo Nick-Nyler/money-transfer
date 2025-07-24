@@ -12,5 +12,5 @@ class Config:
     MPESA_SHORTCODE           = os.environ.get('MPESA_SHORTCODE')
     MPESA_PASSKEY             = os.environ.get('MPESA_PASSKEY')
     MPESA_ENVIRONMENT         = os.environ.get('MPESA_ENVIRONMENT', 'sandbox')  # 'sandbox' or 'production'
-    MPESA_CALLBACK_URL        = os.environ.get('MPESA_CALLBACK_URL') or 'https://io-fantasy-breakfast-bryant.trycloudflare.com/api/wallet/mpesa/callback'
+    MPESA_CALLBACK_URL        = os.environ.get('MPESA_CALLBACK_URL') or 'https://collapse-wilson-algorithms-knowledge.trycloudflare.com'
 
