@@ -15,6 +15,7 @@ import {
 import { fetchTransactions } from "../features/transactions/transactionsSlice"
 import WalletCard from "./common/WalletCard"
 import LoadingSpinner from "./common/LoadingSpinner"
+import useMpesaSocket from "../hooks/useMpesaSocket"  // ← Real‐time updates hook
 
 // normalize 07xxxx / +2547xxxx / 2547xxxx -> 2547xxxx
 const normalizePhone = (p) => {
@@ -27,6 +28,8 @@ const normalizePhone = (p) => {
 const QUICK_AMOUNTS = [1000, 5000, 10000]
 
 const AddFunds = () => {
+  useMpesaSocket()  // ← start listening for callback events
+
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -52,7 +55,7 @@ const AddFunds = () => {
     dispatch(fetchWalletBalance())
   }, [dispatch, user])
 
-  // poll every 1s (faster feedback)
+  // poll every 1s (fallback)
   useEffect(() => {
     if (!polling || !pendingCheckoutId) return
 
@@ -62,10 +65,14 @@ const AddFunds = () => {
         const st = res?.payload?.status
         if (st && st !== "pending") finishSuccess()
       })
-      if (triesRef.current > 20) {
+      if (triesRef.current > 10) {
         dispatch(stopPolling())
         setLocalProcessing(false)
-        setFormErrors({ general: "Timed out waiting for M‑Pesa. If you approved, refresh dashboard." })
+        setFormErrors({
+          general:
+            "Still waiting for M‑Pesa. If you approved, your wallet should update shortly.",
+        })
+        clearTimeout(timeoutRef.current)
       }
     }, 1000)
 
@@ -109,7 +116,6 @@ const AddFunds = () => {
       setStep((s) => s + 1)
     }
   }
-
   const back = () => setStep((s) => s - 1)
 
   // confirm
@@ -129,11 +135,9 @@ const AddFunds = () => {
 
     dispatch(initiateStk({ amount: amt, phone_number: phone }))
       .unwrap()
-      .then((res) => {
-        // Instant feedback
-        toast.info("✅ STK Push sent! Check your phone to complete payment.")
-        // optional hard timeout
-        timeoutRef.current = setTimeout(() => finishSuccess(), 70000)
+      .then(() => {
+        toast.info("✅ STK Push sent! Check your phone.")
+        timeoutRef.current = setTimeout(() => finishSuccess(), 15000)
       })
       .catch((e) => {
         setFormErrors({ general: e.message || "Failed to initiate STK" })
@@ -154,7 +158,8 @@ const AddFunds = () => {
   const finish = () => navigate("/dashboard")
 
   const displayAmt = parseFloat(amount) || 0
-  const firstLoad = status === "loading" && !localProcessing && !polling && !transactionComplete
+  const firstLoad =
+    status === "loading" && !localProcessing && !polling && !transactionComplete
 
   if (firstLoad) return <LoadingSpinner />
 
@@ -167,7 +172,9 @@ const AddFunds = () => {
         {[1, 2, 3].map((n) => (
           <div key={n} className={`step ${step >= n ? "active" : ""}`}>
             <div className="step-number">{n}</div>
-            <div className="step-label">{["Amount", "M‑Pesa", "Confirm"][n - 1]}</div>
+            <div className="step-label">
+              {["Amount", "M‑Pesa", "Confirm"][n - 1]}
+            </div>
           </div>
         ))}
       </div>
@@ -189,16 +196,24 @@ const AddFunds = () => {
               min="1"
               max="300000"
             />
-            {formErrors.amount && <span className="error">{formErrors.amount}</span>}
+            {formErrors.amount && (
+              <span className="error">{formErrors.amount}</span>
+            )}
           </div>
           <div className="quick-amounts">
             {QUICK_AMOUNTS.map((val) => (
-              <button key={val} onClick={() => setAmount(String(val))} className="amount-btn">
+              <button
+                key={val}
+                onClick={() => setAmount(String(val))}
+                className="amount-btn"
+              >
                 KES {val.toLocaleString()}
               </button>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={next}>Next</button>
+          <button className="btn btn-primary" onClick={next}>
+            Next
+          </button>
         </div>
       )}
 
@@ -213,11 +228,17 @@ const AddFunds = () => {
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="+2547XXXXXXXX"
             />
-            {formErrors.phoneNumber && <span className="error">{formErrors.phoneNumber}</span>}
+            {formErrors.phoneNumber && (
+              <span className="error">{formErrors.phoneNumber}</span>
+            )}
           </div>
           <div className="form-actions">
-            <button className="btn btn-outline" onClick={back}>Back</button>
-            <button className="btn btn-primary" onClick={next}>Next</button>
+            <button className="btn btn-outline" onClick={back}>
+              Back
+            </button>
+            <button className="btn btn-primary" onClick={next}>
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -228,8 +249,12 @@ const AddFunds = () => {
           <p>Amount: KES {displayAmt.toLocaleString()}</p>
           <p>Phone: {phoneNumber}</p>
           <div className="form-actions">
-            <button className="btn btn-outline" onClick={back}>Back</button>
-            <button className="btn btn-primary" onClick={confirm}>Confirm</button>
+            <button className="btn btn-outline" onClick={back}>
+              Back
+            </button>
+            <button className="btn btn-primary" onClick={confirm}>
+              Confirm
+            </button>
           </div>
         </div>
       )}
