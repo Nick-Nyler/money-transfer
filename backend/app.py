@@ -19,7 +19,12 @@ def create_app():
     # ————— Enable CORS on all /api/* routes for our React frontend —————
     CORS(
         app,
-        resources={r"/api/*": {"origins": "http://localhost:5173"}},
+        resources={r"/api/*": {
+            "origins": [
+                "http://localhost:5173",
+                "https://money-transfer-d.onrender.com"
+            ]
+        }},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
         expose_headers=["Authorization"]

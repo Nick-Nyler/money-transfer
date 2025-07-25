@@ -41,6 +41,7 @@ def get_user_details_for_admin(user_id):
         "transactions": transactions_data
     }
 
+
 def get_all_transactions():
     """
     Fetch all transactions (for admin monitoring dashboard).
