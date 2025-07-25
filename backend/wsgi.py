@@ -1,14 +1,16 @@
 # backend/wsgi.py
 
-from app import create_app, socketio
+import os
+from app import create_app
+from extensions import socketio
 from database.db_init import init_db
 
-# Create Flask app
+# Create & configure the Flask app
 app = create_app()
 
-# Ensure DB schema is created before serving traffic
+# Ensure the database schema exists before serving
 with app.app_context():
     init_db(app)
 
-# Expose a Socket‑IO–wrapped WSGI app for Gunicorn
-application = socketio.WSGIApp(app)
+# Expose the Flask app to Gunicorn (use this name in your Render start command)
+application = app
