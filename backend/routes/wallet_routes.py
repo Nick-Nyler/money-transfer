@@ -63,12 +63,14 @@ def mpesa_callback():
     """
     Safaricom posts here. Always ACK.
     """
+    # force=True ensures we parse even if Content-Type is not JSON
     payload = request.get_json(force=True) or {}
     try:
         handle_mpesa_callback(payload)
     except Exception:
-        # avoid retry storms
+        # avoid retry storms on malformed data
         pass
+    # Always return success to M-Pesa
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
 
 # ─────────────── Poll TX Status ───────────────

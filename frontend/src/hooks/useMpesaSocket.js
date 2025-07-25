@@ -15,17 +15,23 @@ export default function useMpesaSocket() {
   const { pendingCheckoutId } = useSelector((s) => s.wallet)
 
   useEffect(() => {
-    // connect to your backend SocketIO endpoint
-    const socket = io(import.meta.env.VITE_API_URL, {
+    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000"
+    const socket = io(backendUrl, {
       path: "/socket.io",
       transports: ["websocket"],
+      withCredentials: true,
+    })
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err)
     })
 
     socket.on("mpesa_status", (msg) => {
       if (msg.checkoutRequestID === pendingCheckoutId) {
-        // stop any polling, clear errors, refresh data
+        // Stop polling and clear any errors
         dispatch(clearError())
         dispatch(stopPolling())
+        // Refresh wallet balance and transaction history
         dispatch(fetchWalletBalance())
         dispatch(fetchTransactions())
       }
