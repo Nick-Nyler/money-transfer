@@ -19,18 +19,8 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null) => 
 
   try {
     const res = await fetch(`${BASE_URL}${endpoint}`, config);
-    let json;
-    try {
-      // Try parsing as JSON (normal API flow)
-      json = await res.clone().json();
-    } catch (err) {
-      // Not JSON—probably a backend crash or empty response
-      const text = await res.text();
-      throw new Error(
-        text?.startsWith('<!') ? "Server Error: Not JSON" : (text || res.statusText || "Unknown server error")
-      );
-    }
-    if (!res.ok) throw new Error(json?.error || "Something went wrong");
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Something went wrong");
     return json;
   } catch (err) {
     console.error("API call failed:", err);
