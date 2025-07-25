@@ -1,5 +1,3 @@
-# backend/app.py
-
 import os
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -34,9 +32,10 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     ma.init_app(app)
-    socketio.init_app(app)  # uses async_mode="threading" and CORS from extensions.py
+    # no need to pass extra CORS here—configured above
+    socketio.init_app(app)
 
-    # Register all blueprints
+    # Register all blueprints (API routes)
     register_blueprints(app)
 
     # Global error handlers
@@ -51,12 +50,12 @@ def create_app():
 
     return app
 
-# Create the app and ensure DB is initialized
+# Create the app and initialize database
 app = create_app()
 with app.app_context():
     init_db(app)
 
 if __name__ == "__main__":
-    # Run with SocketIO server
+    # Only used when running locally
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=True)
