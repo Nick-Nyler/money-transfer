@@ -63,7 +63,7 @@ def mpesa_callback():
     """
     Safaricom posts here. Always ACK.
     """
-    payload = request.get_json() or {}
+    payload = request.get_json(force=True) or {}
     try:
         handle_mpesa_callback(payload)
     except Exception:
@@ -85,10 +85,12 @@ def tx_status(checkout_id):
 @wallet_bp.get("/statement")
 @login_required
 def download_statement():
-    txs = (Transaction.query
-           .filter_by(user_id=g.user_id)
-           .order_by(Transaction.created_at)
-           .all())
+    txs = (
+        Transaction.query
+        .filter_by(user_id=g.user_id)
+        .order_by(Transaction.created_at)
+        .all()
+    )
 
     si = io.StringIO()
     cw = csv.writer(si)
