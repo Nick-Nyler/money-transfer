@@ -63,14 +63,12 @@ def mpesa_callback():
     """
     Safaricom posts here. Always ACK.
     """
-    # force=True ensures we parse even if Content-Type is not JSON
-    payload = request.get_json(force=True) or {}
+    payload = request.get_json() or {}
     try:
         handle_mpesa_callback(payload)
     except Exception:
-        # avoid retry storms on malformed data
+        # avoid retry storms
         pass
-    # Always return success to M-Pesa
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"}), 200
 
 # ─────────────── Poll TX Status ───────────────
@@ -87,12 +85,10 @@ def tx_status(checkout_id):
 @wallet_bp.get("/statement")
 @login_required
 def download_statement():
-    txs = (
-        Transaction.query
-        .filter_by(user_id=g.user_id)
-        .order_by(Transaction.created_at)
-        .all()
-    )
+    txs = (Transaction.query
+           .filter_by(user_id=g.user_id)
+           .order_by(Transaction.created_at)
+           .all())
 
     si = io.StringIO()
     cw = csv.writer(si)
