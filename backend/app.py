@@ -1,10 +1,11 @@
-import os
+# backend/app.py
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-
+import os
 from config import Config
-from extensions import db, ma, socketio
+from extensions import db, ma
 from database.db_init import init_db
 from routes import register_blueprints
 
@@ -15,7 +16,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Enable CORS for your frontend origins
+    # ————— Enable CORS on all /api/* routes for our React frontend —————
     CORS(
         app,
         resources={r"/api/*": {
@@ -32,10 +33,8 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     ma.init_app(app)
-    # no need to pass extra CORS here—configured above
-    socketio.init_app(app)
 
-    # Register all blueprints (API routes)
+    # Register all blueprints
     register_blueprints(app)
 
     # Global error handlers
@@ -50,12 +49,14 @@ def create_app():
 
     return app
 
-# Create the app and initialize database
-app = create_app()
-with app.app_context():
-    init_db(app)
-
 if __name__ == "__main__":
-    # Only used when running locally
+    # Create app and initialize DB
+    app = create_app()
+    with app.app_context():
+        init_db(app)
+
+    # Run server
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True, port=port)
+
+
