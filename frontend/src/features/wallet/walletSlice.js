@@ -22,7 +22,8 @@ export const initiateStk = createAsyncThunk(
   "wallet/initiateStk",
   async ({ amount, phone_number }, { rejectWithValue }) => {
     try {
-      return await api.addFunds(amount, phone_number) // POST /api/wallet/add-funds
+      // api.addFunds returns the raw STK push response, including CheckoutRequestID
+      return await api.addFunds(amount, phone_number)
     } catch (err) {
       return rejectWithValue(err.message || "Failed to initiate STK")
     }
@@ -34,7 +35,7 @@ export const pollTxnStatus = createAsyncThunk(
   "wallet/pollTxnStatus",
   async (checkoutRequestID, { rejectWithValue }) => {
     try {
-      return await api.getTxnStatus(checkoutRequestID) // GET /api/wallet/tx-status/:id
+      return await api.getTxnStatus(checkoutRequestID)
     } catch (err) {
       return rejectWithValue(err.message || "Poll failed")
     }
@@ -93,7 +94,8 @@ const walletSlice = createSlice({
       })
       .addCase(initiateStk.fulfilled, (state, action) => {
         state.status = "succeeded"
-        state.pendingCheckoutId = action.payload.checkoutRequestID
+        // store the CheckoutRequestID for polling
+        state.pendingCheckoutId = action.payload.CheckoutRequestID || action.payload.checkoutRequestID
         state.polling = true
       })
       .addCase(initiateStk.rejected, (state, action) => {
@@ -102,9 +104,13 @@ const walletSlice = createSlice({
       })
 
       // ── pollTxnStatus ──
+      .addCase(pollTxnStatus.pending, (state) => {
+        // keep polling=true until we see a result
+        state.pollError = null
+      })
       .addCase(pollTxnStatus.fulfilled, (state, action) => {
         const st = action.payload?.status
-        if (st !== "pending") {
+        if (st && st !== "pending") {
           state.polling = false
           state.pendingCheckoutId = null
         }
@@ -117,12 +123,7 @@ const walletSlice = createSlice({
 
       // ── logout cleanup ──
       .addCase(logout.fulfilled, (state) => {
-        state.wallet = null
-        state.status = "idle"
-        state.error = null
-        state.pendingCheckoutId = null
-        state.polling = false
-        state.pollError = null
+        Object.assign(state, initialState)
       })
   },
 })

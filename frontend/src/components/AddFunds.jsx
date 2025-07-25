@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
+import { toast } from "react-toastify"
 import {
   fetchWalletBalance,
   initiateStk,
@@ -33,7 +34,7 @@ const AddFunds = () => {
   const { wallet, status, error, polling, pendingCheckoutId } = useSelector((s) => s.wallet)
 
   const [amount, setAmount] = useState("")
-  const [phoneNumber, setPhoneNumber] = useState("")  // <- fixed
+  const [phoneNumber, setPhoneNumber] = useState("")
   const [step, setStep] = useState(1)
   const [formErrors, setFormErrors] = useState({})
   const [localProcessing, setLocalProcessing] = useState(false)
@@ -51,26 +52,22 @@ const AddFunds = () => {
     dispatch(fetchWalletBalance())
   }, [dispatch, user])
 
-  // poll every 3s
+  // poll every 1s (faster feedback)
   useEffect(() => {
-    console.log("poll effect ->", { polling, pendingCheckoutId })
     if (!polling || !pendingCheckoutId) return
 
     const id = setInterval(() => {
       triesRef.current += 1
-      console.log("poll try", triesRef.current, "ID:", pendingCheckoutId)
       dispatch(pollTxnStatus(pendingCheckoutId)).then((res) => {
         const st = res?.payload?.status
-        console.log("poll result:", st, res?.payload)
         if (st && st !== "pending") finishSuccess()
       })
       if (triesRef.current > 20) {
-        console.warn("poll timed out")
         dispatch(stopPolling())
         setLocalProcessing(false)
         setFormErrors({ general: "Timed out waiting for M‑Pesa. If you approved, refresh dashboard." })
       }
-    }, 3000)
+    }, 1000)
 
     return () => clearInterval(id)
   }, [polling, pendingCheckoutId, dispatch])
@@ -80,7 +77,6 @@ const AddFunds = () => {
     if (!polling || startBalanceRef.current == null || !wallet) return
     const startBal = Number(startBalanceRef.current)
     const nowBal = Number(wallet.balance)
-    console.log("balance check", { startBal, nowBal })
     if (nowBal > startBal) finishSuccess()
   }, [wallet, polling])
 
@@ -97,15 +93,14 @@ const AddFunds = () => {
   }
 
   const validateStep2 = () => {
-  const errs = {}
-  const cleaned = phoneNumber.replace(/\s/g, "")
-  const re = /^(?:0(7|1)\d{8}|254(7|1)\d{8}|\+254(7|1)\d{8})$/
-  if (!cleaned) errs.phoneNumber = "Phone number is required"
-  else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
-  setFormErrors(errs)
-  return !Object.keys(errs).length
-}
-
+    const errs = {}
+    const cleaned = phoneNumber.replace(/\s/g, "")
+    const re = /^(?:0(7|1)\d{8}|254(7|1)\d{8}|\+254(7|1)\d{8})$/
+    if (!cleaned) errs.phoneNumber = "Phone number is required"
+    else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
+    setFormErrors(errs)
+    return !Object.keys(errs).length
+  }
 
   // navigation
   const next = () => {
@@ -135,21 +130,18 @@ const AddFunds = () => {
     dispatch(initiateStk({ amount: amt, phone_number: phone }))
       .unwrap()
       .then((res) => {
-        console.log("initiateStk OK:", res)
-        // safety timeout
-        timeoutRef.current = setTimeout(() => {
-          console.warn("hard timeout fired")
-          finishSuccess()
-        }, 70000)
+        // Instant feedback
+        toast.info("✅ STK Push sent! Check your phone to complete payment.")
+        // optional hard timeout
+        timeoutRef.current = setTimeout(() => finishSuccess(), 70000)
       })
       .catch((e) => {
-        setFormErrors({ general: e || "Failed to initiate STK" })
+        setFormErrors({ general: e.message || "Failed to initiate STK" })
         setLocalProcessing(false)
       })
   }
 
   const finishSuccess = () => {
-    console.log("finishSuccess()")
     clearTimeout(timeoutRef.current)
     dispatch(stopPolling())
     dispatch(fetchWalletBalance())
@@ -175,7 +167,7 @@ const AddFunds = () => {
         {[1, 2, 3].map((n) => (
           <div key={n} className={`step ${step >= n ? "active" : ""}`}>
             <div className="step-number">{n}</div>
-            <div className="step-label">{["Amount", "M-Pesa", "Confirm"][n - 1]}</div>
+            <div className="step-label">{["Amount", "M‑Pesa", "Confirm"][n - 1]}</div>
           </div>
         ))}
       </div>
@@ -184,7 +176,6 @@ const AddFunds = () => {
         <div className="error-message">{formErrors.general || error}</div>
       )}
 
-      {/* STEP 1 */}
       {step === 1 && (
         <div className="step-content">
           <h2>Enter Amount</h2>
@@ -211,10 +202,9 @@ const AddFunds = () => {
         </div>
       )}
 
-      {/* STEP 2 */}
       {step === 2 && (
         <div className="step-content">
-          <h2>M-Pesa Details</h2>
+          <h2>M‑Pesa Details</h2>
           <div className="form-group">
             <label>Phone Number</label>
             <input
@@ -232,7 +222,6 @@ const AddFunds = () => {
         </div>
       )}
 
-      {/* STEP 3 */}
       {step === 3 && !localProcessing && !polling && !transactionComplete && (
         <div className="step-content">
           <h2>Confirm Payment</h2>
@@ -245,16 +234,18 @@ const AddFunds = () => {
         </div>
       )}
 
-      {/* Processing / Polling */}
       {(localProcessing || polling) && !transactionComplete && (
         <div className="step-content">
           <LoadingSpinner />
-          <p>{polling ? "Waiting for M‑Pesa confirmation…" : "Sending STK push…"}</p>
+          <p>
+            {polling
+              ? "Waiting for M‑Pesa confirmation…"
+              : "Sending STK push…"}
+          </p>
           <p>Approve the prompt on your phone.</p>
         </div>
       )}
 
-      {/* Done */}
       {transactionComplete && (
         <div className="step-content">
           <h2>Payment Successful 🎉</h2>
