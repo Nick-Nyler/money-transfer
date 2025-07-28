@@ -1,3 +1,5 @@
+# backend/routes/beneficiary_routes.py
+
 from flask import Blueprint, request, jsonify, g
 from controllers import beneficiary_controller
 from routes.auth_routes import login_required
