@@ -1,4 +1,4 @@
-// src/components/AddFunds.jsx
+
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -15,9 +15,9 @@ import {
 import { fetchTransactions } from "../features/transactions/transactionsSlice"
 import WalletCard from "./common/WalletCard"
 import LoadingSpinner from "./common/LoadingSpinner"
-import useMpesaSocket from "../hooks/useMpesaSocket"  // ← Real‐time updates hook
+import useMpesaSocket from "../hooks/useMpesaSocket"  
 
-// normalize 07xxxx / +2547xxxx / 2547xxxx -> 2547xxxx
+
 const normalizePhone = (p) => {
   let phone = p.trim()
   if (phone.startsWith("+")) phone = phone.slice(1)

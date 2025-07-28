@@ -84,7 +84,7 @@ const LandingPage = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {}
       <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
@@ -242,7 +242,7 @@ const LandingPage = () => {
       </section>
 
      
-      {/* Footer */}
+      {}
       <footer className="landing-footer">
         <div className="footer-container">
           <div className="footer-content">
