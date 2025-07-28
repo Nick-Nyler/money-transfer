@@ -29,7 +29,6 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null) => 
 };
 
 export const api = {
-  // — Auth —
   login: async (email, password) => {
     const { token, user } = await _callApi("/auth/login", "POST", { email, password });
     localStorage.setItem("authToken", token);
@@ -56,7 +55,6 @@ export const api = {
     return { user };
   },
 
-  // — Wallet —
   getWalletBalance: async () => {
     const token = localStorage.getItem("authToken");
     const response = await _callApi("/wallet/balance", "GET", null, token);
@@ -75,7 +73,6 @@ export const api = {
     return { wallet: response };
   },
 
-  // Download CSV statement
   downloadStatement: async () => {
     const token = localStorage.getItem("authToken");
     const res = await fetch(`${BASE_URL}/wallet/statement`, {
@@ -98,7 +95,6 @@ export const api = {
     return true;
   },
 
-  // — Beneficiaries —
   getBeneficiaries: async () => {
     const token = localStorage.getItem("authToken");
     const { beneficiaries } = await _callApi("/beneficiaries/", "GET", null, token);
@@ -117,7 +113,6 @@ export const api = {
     return { id };
   },
 
-  // — Transactions —
   getTransactions: async () => {
     const token = localStorage.getItem("authToken");
     const { transactions } = await _callApi("/transactions/", "GET", null, token);
@@ -131,7 +126,7 @@ export const api = {
     return { wallet, transaction };
   },
 
-  // — Admin —
+  //  Admin 
   getAllUsers: async () => {
     const token = localStorage.getItem("authToken");
     const { users } = await _callApi("/admin/users", "GET", null, token);
@@ -149,7 +144,7 @@ export const api = {
     return await _callApi(`/admin/users/${userId}`, "GET", null, token);
   },
 
-  // — New: Activate/Deactivate User —
+  // Activate/Deactivate User
   updateUserStatus: async (userId, role) => {
     const token = localStorage.getItem("authToken");
     return await _callApi(
@@ -160,7 +155,6 @@ export const api = {
     );
   },
 
-  // — New: Reverse a transaction —
   reverseTransaction: async (transactionId) => {
     const token = localStorage.getItem("authToken");
     const { transaction } = await _callApi(

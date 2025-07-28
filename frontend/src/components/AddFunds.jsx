@@ -102,7 +102,7 @@ const AddFunds = () => {
   const validateStep2 = () => {
     const errs = {}
     const cleaned = phoneNumber.replace(/\s/g, "")
-    const re = /^(?:0(7|1)\d{8}|254(7|1)\d{8}|\+254(7|1)\d{8})$/
+    const re = /^(?:0(7\d{8}|11\d{7})|254(7\d{8}|11\d{7})|\+254(7\d{8}|11\d{7}))$/
     if (!cleaned) errs.phoneNumber = "Phone number is required"
     else if (!re.test(cleaned)) errs.phoneNumber = "Phone number is invalid"
     setFormErrors(errs)
