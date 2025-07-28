@@ -1,4 +1,3 @@
-// src/components/SendMoney.jsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -35,7 +34,7 @@ const SendMoney = () => {
   const [transactionComplete, setTransactionComplete] = useState(false)
   const [transactionDetails, setTransactionDetails] = useState(null)
 
-  // — inline phone normalizer — 
+  // inline phone normalizer 
   const normalizePhone = (raw) => {
     let digits = (raw || "").replace(/\D/g, "")
     if (digits.startsWith("0")) digits = digits.slice(1)
@@ -138,12 +137,11 @@ const SendMoney = () => {
   )
     return <LoadingSpinner />
 
-  // calculations
+  // transaction fee calculations
   const num = parseFloat(amount) || 0
   const fee = num * 0.01
   const total = num + fee
 
-  // helper to format
   const fmt = (n) =>
     n.toLocaleString(undefined, {
       minimumFractionDigits: 2,
