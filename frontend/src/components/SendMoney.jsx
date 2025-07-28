@@ -103,7 +103,7 @@ const SendMoney = () => {
     setFormErrors({})
   }
 
-  
+  // send
   const handleSendMoney = () => {
     setIsProcessing(true)
     const num = parseFloat(amount) || 0
