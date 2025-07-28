@@ -91,6 +91,7 @@ const Profile = () => {
       })
   }
 
+  
   const handlePasswordSubmit = (e) => {
     e.preventDefault()
     if (!validatePasswordForm()) return
