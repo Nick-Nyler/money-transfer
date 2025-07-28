@@ -67,7 +67,7 @@ def seed_data():
         db.session.add_all([jane_smith, michael_johnson])
         db.session.commit()
 
-        # Demo Transactions
+      
         transactions = [
             Transaction(
                 user_id=john_doe.id, type="deposit", amount=10000, fee=0, status="completed",
