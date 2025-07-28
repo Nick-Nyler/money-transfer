@@ -32,7 +32,6 @@ const Register = () => {
       [name]: value,
     })
 
-    // Clear specific error when field is changed
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
