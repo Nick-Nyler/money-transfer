@@ -8,12 +8,7 @@ import {
   fetchBeneficiaries,
   addBeneficiary,
   removeBeneficiary,
-} from "../features/beneficiaries/beneficiariesSlice"
-import { useNavigate } from "react-router-dom"
-import {
-  fetchBeneficiaries,
-  addBeneficiary,
-  removeBeneficiary,
+  updateBeneficiary,
 } from "../features/beneficiaries/beneficiariesSlice"
 import LoadingSpinner from "./common/LoadingSpinner"
 
@@ -25,6 +20,7 @@ const Beneficiaries = () => {
     (state) => state.beneficiaries
   )
 
+  // Add form
   const [showAddForm, setShowAddForm] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -34,60 +30,45 @@ const Beneficiaries = () => {
     relationship: "",
   })
   const [formErrors, setFormErrors] = useState({})
+
+  // Edit form
+  const [editingId, setEditingId] = useState(null)
+  const [editData, setEditData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    accountNumber: "",
+    relationship: "",
+  })
+
+  // Delete confirmation
   const [deleteConfirmation, setDeleteConfirmation] = useState(null)
 
   useEffect(() => {
-    if (user) {
-      dispatch(fetchBeneficiaries(user.id))
-    }
+    if (user) dispatch(fetchBeneficiaries(user.id))
   }, [dispatch, user])
 
-  const handleChange = (e) => {
+  const handleChange = (stateSetter, errorsSetter) => (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: "" }))
-      setFormErrors((prev) => ({ ...prev, [name]: "" }))
-    }
+    stateSetter((prev) => ({ ...prev, [name]: value }))
+    errorsSetter((prev) => ({ ...prev, [name]: "" }))
   }
 
-  const validateForm = () => {
+  const validate = (data, setErrors) => {
     const errors = {}
-    if (!formData.name.trim()) errors.name = "Name is required"
-    if (!formData.phone.trim()) errors.phone = "Phone number is required"
-    else if (!/^+?\d{10,15}$/.test(formData.phone.replace(/\s/g, "")))
-    if (!formData.name.trim()) errors.name = "Name is required"
-    if (!formData.phone.trim()) errors.phone = "Phone number is required"
-    else if (!/^\+?\d{10,15}$/.test(formData.phone.replace(/\s/g, "")))
+    if (!data.name.trim()) errors.name = "Name is required"
+    if (!data.phone.trim()) errors.phone = "Phone number is required"
+    else if (!/^+?\d{10,15}$/.test(data.phone.replace(/\s/g, "")))
       errors.phone = "Phone number is invalid"
-    if (formData.email && !/\S+@\S+.\S+/.test(formData.email))
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email))
+    if (data.email && !/\S+@\S+.\S+/.test(data.email))
       errors.email = "Email is invalid"
-
-setFormErrors(errors)
-return Object.keys(errors).length === 0
+    setErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
-  const handleSubmit = (e) => {
+  const handleAddSubmit = (e) => {
     e.preventDefault()
-    if (!validateForm()) return
-
-dispatch(addBeneficiary({ ...formData, userId: user.id }))
-  .unwrap()
-  .then(() => {
-    setFormData({
-      name: "",
-      phone: "",
-      email: "",
-      accountNumber: "",
-      relationship: "",
-    })
-    setShowAddForm(false)
-  })
-  .catch(() => {})
-    if (!validateForm()) return
-
+    if (!validate(formData, setFormErrors)) return
     dispatch(addBeneficiary({ ...formData, userId: user.id }))
       .unwrap()
       .then(() => {
@@ -103,7 +84,26 @@ dispatch(addBeneficiary({ ...formData, userId: user.id }))
       .catch(() => {})
   }
 
-  const handleDelete = (id) => setDeleteConfirmation(id)
+  const handleEditClick = (b) => {
+    setEditingId(b.id)
+    setEditData({
+      name: b.name,
+      phone: b.phone,
+      email: b.email || "",
+      accountNumber: b.accountNumber || "",
+      relationship: b.relationship || "",
+    })
+  }
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault()
+    if (!validate(editData, setFormErrors)) return
+    dispatch(updateBeneficiary({ id: editingId, ...editData }))
+      .unwrap()
+      .then(() => setEditingId(null))
+      .catch(() => {})
+  }
+
   const handleDelete = (id) => setDeleteConfirmation(id)
   const confirmDelete = () => {
     dispatch(removeBeneficiary(deleteConfirmation))
@@ -112,17 +112,8 @@ dispatch(addBeneficiary({ ...formData, userId: user.id }))
   }
   const cancelDelete = () => setDeleteConfirmation(null)
 
-  const handleSendMoney = (b) => {
-    navigate(/send-money?beneficiaryId=${b.id})
-    dispatch(removeBeneficiary(deleteConfirmation))
-      .unwrap()
-      .finally(() => setDeleteConfirmation(null))
-  }
-  const cancelDelete = () => setDeleteConfirmation(null)
-
-  const handleSendMoney = (b) => {
+  const handleSendMoney = (b) =>
     navigate(`/send-money?beneficiaryId=${b.id}`)
-  }
 
   if (status === "loading") {
     return <LoadingSpinner />
@@ -134,11 +125,11 @@ dispatch(addBeneficiary({ ...formData, userId: user.id }))
         <h1>Manage Beneficiaries</h1>
         <button
           className="btn btn-primary"
-          onClick={() => setShowAddForm((s) => !s)}
-        >
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowAddForm((s) => !s)}
+          onClick={() => {
+            setShowAddForm((s) => !s)
+            setEditingId(null)
+            setFormErrors({})
+          }}
         >
           {showAddForm ? "Cancel" : "Add Beneficiary"}
         </button>
@@ -147,211 +138,172 @@ dispatch(addBeneficiary({ ...formData, userId: user.id }))
   {error && <div className="error-message">{error}</div>}
 
   {showAddForm && (
-    <div className="add-beneficiary-form">
+    <form className="add-beneficiary-form" onSubmit={handleAddSubmit}>
       <h2>Add New Beneficiary</h2>
-      <form onSubmit={handleSubmit}>
-        {/* Name */}
-        <div className="form-group">
-          <label htmlFor="name">Full Name</label>
-          <input
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Enter full name"
-          />
-          {formErrors.name && <span className="error">{formErrors.name}</span>}
-        </div>
-        {/* Phone */}
-        <div className="form-group">
-          <label htmlFor="phone">Phone Number</label>
-          <input
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="+254XXXXXXXXX"
-          />
-          {formErrors.phone && <span className="error">{formErrors.phone}</span>}
-        </div>
-        {/* Email */}
-        <div className="form-group">
-          <label htmlFor="email">Email (Optional)</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Enter email address"
-          />
-          {formErrors.email && <span className="error">{formErrors.email}</span>}
-        </div>
-        {/* Account + Relationship */}
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="accountNumber">Account Number (Optional)</label>
+
+      <input
+        name="name"
+        placeholder="Full Name"
+        value={formData.name}
+        onChange={handleChange(setFormData, setFormErrors)}
+      />
+      {formErrors.name && (
+        <span className="error">{formErrors.name}</span>
+      )}
+
+      <input
+        name="phone"
+        placeholder="Phone (+254...)"
+        value={formData.phone}
+        onChange={handleChange(setFormData, setFormErrors)}
+      />
+      {formErrors.phone && (
+        <span className="error">{formErrors.phone}</span>
+      )}
+
+      <input
+        name="email"
+        placeholder="Email (opt)"
+        value={formData.email}
+        onChange={handleChange(setFormData, setFormErrors)}
+      />
+      {formErrors.email && (
+        <span className="error">{formErrors.email}</span>
+      )}
+
+      <input
+        name="accountNumber"
+        placeholder="Account # (opt)"
+        value={formData.accountNumber}
+        onChange={(e) =>
+          setFormData((p) => ({ ...p, accountNumber: e.target.value }))
+        }
+      />
+
+      <select
+        name="relationship"
+        value={formData.relationship}
+        onChange={(e) =>
+          setFormData((p) => ({ ...p, relationship: e.target.value }))
+        }
+      >
+        <option value="">Relationship (opt)</option>
+        <option value="Family">Family</option>
+        <option value="Friend">Friend</option>
+        <option value="Business">Business</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <button className="btn btn-primary" type="submit">
+        Add Beneficiary
+      </button>
+    </form>
+  )}
+
+  <div className="beneficiaries-list-container">
+    <div className="beneficiaries-grid">
+      {beneficiaries.map((b) =>
+        editingId === b.id ? (
+          <form
+            key={b.id}
+            className="beneficiary-card editing"
+            onSubmit={handleEditSubmit}
+          >
+            <h3>Edit Beneficiary</h3>
             <input
-              id="accountNumber"
-              name="accountNumber"
-              value={formData.accountNumber}
-              onChange={handleChange}
-              placeholder="Enter account number"
+              name="name"
+              placeholder="Full Name"
+              value={editData.name}
+              onChange={handleChange(setEditData, setFormErrors)}
             />
-          </div>
-          <div className="form-group">
-            <label htmlFor="relationship">Relationship (Optional)</label>
+            {formErrors.name && (
+              <span className="error">{formErrors.name}</span>
+            )}
+
+            <input
+              name="phone"
+              placeholder="Phone (+254...)"
+              value={editData.phone}
+              onChange={handleChange(setEditData, setFormErrors)}
+            />
+            {formErrors.phone && (
+              <span className="error">{formErrors.phone}</span>
+            )}
+
+            <input
+              name="email"
+              placeholder="Email (opt)"
+              value={editData.email}
+              onChange={handleChange(setEditData, setFormErrors)}
+            />
+            {formErrors.email && (
+              <span className="error">{formErrors.email}</span>
+            )}
+
+            <input
+              name="accountNumber"
+              placeholder="Account # (opt)"
+              value={editData.accountNumber}
+              onChange={(e) =>
+                setEditData((p) => ({ ...p, accountNumber: e.target.value }))
+              }
+            />
+
             <select
-              id="relationship"
               name="relationship"
-              value={formData.relationship}
-              onChange={handleChange}
+              value={editData.relationship}
+              onChange={(e) =>
+                setEditData((p) => ({ ...p, relationship: e.target.value }))
+              }
             >
-              <option value="">Select relationship</option>
+              <option value="">Relationship (opt)</option>
               <option value="Family">Family</option>
               <option value="Friend">Friend</option>
               <option value="Business">Business</option>
               <option value="Other">Other</option>
             </select>
-          </div>
-        </div>
-        <div className="form-actions">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={status === "loading"}
-          >
-            {status === "loading" ? "Adding..." : "Add Beneficiary"}
-          </button>
-        </div>
-      </form>
-    </div>
-  )}
-      {showAddForm && (
-        <div className="add-beneficiary-form">
-          <h2>Add New Beneficiary</h2>
-          <form onSubmit={handleSubmit}>
-            {/* Name */}
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter full name"
-              />
-              {formErrors.name && <span className="error">{formErrors.name}</span>}
-            </div>
-            {/* Phone */}
-            <div className="form-group">
-              <label htmlFor="phone">Phone Number</label>
-              <input
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+254XXXXXXXXX"
-              />
-              {formErrors.phone && <span className="error">{formErrors.phone}</span>}
-            </div>
-            {/* Email */}
-            <div className="form-group">
-              <label htmlFor="email">Email (Optional)</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter email address"
-              />
-              {formErrors.email && <span className="error">{formErrors.email}</span>}
-            </div>
-            {/* Account + Relationship */}
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="accountNumber">Account Number (Optional)</label>
-                <input
-                  id="accountNumber"
-                  name="accountNumber"
-                  value={formData.accountNumber}
-                  onChange={handleChange}
-                  placeholder="Enter account number"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="relationship">Relationship (Optional)</label>
-                <select
-                  id="relationship"
-                  name="relationship"
-                  value={formData.relationship}
-                  onChange={handleChange}
-                >
-                  <option value="">Select relationship</option>
-                  <option value="Family">Family</option>
-                  <option value="Friend">Friend</option>
-                  <option value="Business">Business</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
+
             <div className="form-actions">
+              <button type="submit" className="btn btn-primary btn-sm">
+                Save
+              </button>
               <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={status === "loading"}
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setEditingId(null)}
               >
-                {status === "loading" ? "Adding..." : "Add Beneficiary"}
+                Cancel
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-  {beneficiaries.length > 0 ? (
-    <div className="beneficiaries-list-container">
-      <div className="beneficiaries-grid">
-        {beneficiaries.map((b) => (
+        ) : (
           <div key={b.id} className="beneficiary-card">
-            {/* Header */}
             <div className="beneficiary-header">
-              <div className="beneficiary-avatar">
+              <div className="avatar">
                 {b.name.charAt(0).toUpperCase()}
               </div>
-              <div className="beneficiary-info">
+              <div className="info">
                 <h3>{b.name}</h3>
                 <p>{b.phone}</p>
               </div>
             </div>
-            {/* Details */}
-            <div className="beneficiary-details">
-              {b.email && (
-                <div className="detail-row">
-                  <span className="label">Email:</span>
-                  <span>{b.email}</span>
-                </div>
-              )}
-              {b.accountNumber && (
-                <div className="detail-row">
-                  <span className="label">Account:</span>
-                  <span>{b.accountNumber}</span>
-                </div>
-              )}
-              {b.relationship && (
-                <div className="detail-row">
-                  <span className="label">Relationship:</span>
-                  <span>{b.relationship}</span>
-                </div>
-              )}
+            <div className="details">
+              {b.email && <p>Email: {b.email}</p>}
+              {b.accountNumber && <p>Account: {b.accountNumber}</p>}
+              {b.relationship && <p>Relationship: {b.relationship}</p>}
             </div>
-            {/* Actions */}
             <div className="beneficiary-actions">
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => handleSendMoney(b)}
               >
                 Send Money
+              </button>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => handleEditClick(b)}
+              >
+                Edit
               </button>
               <button
                 className="btn btn-danger btn-sm"
@@ -362,125 +314,27 @@ dispatch(addBeneficiary({ ...formData, userId: user.id }))
             </div>
             {deleteConfirmation === b.id && (
               <div className="delete-confirmation">
-                <p>Are you sure you want to remove this beneficiary?</p>
-                <div className="confirmation-actions">
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={confirmDelete}
-                  >
-                    Yes, Remove
-                  </button>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={cancelDelete}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <p>Remove this beneficiary?</p>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={confirmDelete}
+                >
+                  Yes
+                </button>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={cancelDelete}
+                >
+                  No
+                </button>
               </div>
             )}
           </div>
-        ))}
-      </div>
-    </div>
-  ) : (
-    <div className="empty-state">
-      <p>You haven't added any beneficiaries yet.</p>
-      <button
-        className="btn btn-primary"
-        onClick={() => setShowAddForm(true)}
-      >
-        Add Your First Beneficiary
-      </button>
-    </div>
-  )}
-</div>
-      {beneficiaries.length > 0 ? (
-        <div className="beneficiaries-list-container">
-          <div className="beneficiaries-grid">
-            {beneficiaries.map((b) => (
-              <div key={b.id} className="beneficiary-card">
-                {/* Header */}
-                <div className="beneficiary-header">
-                  <div className="beneficiary-avatar">
-                    {b.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="beneficiary-info">
-                    <h3>{b.name}</h3>
-                    <p>{b.phone}</p>
-                  </div>
-                </div>
-                {/* Details */}
-                <div className="beneficiary-details">
-                  {b.email && (
-                    <div className="detail-row">
-                      <span className="label">Email:</span>
-                      <span>{b.email}</span>
-                    </div>
-                  )}
-                  {b.accountNumber && (
-                    <div className="detail-row">
-                      <span className="label">Account:</span>
-                      <span>{b.accountNumber}</span>
-                    </div>
-                  )}
-                  {b.relationship && (
-                    <div className="detail-row">
-                      <span className="label">Relationship:</span>
-                      <span>{b.relationship}</span>
-                    </div>
-                  )}
-                </div>
-                {/* Actions */}
-                <div className="beneficiary-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => handleSendMoney(b)}
-                  >
-                    Send Money
-                  </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleDelete(b.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-                {deleteConfirmation === b.id && (
-                  <div className="delete-confirmation">
-                    <p>Are you sure you want to remove this beneficiary?</p>
-                    <div className="confirmation-actions">
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={confirmDelete}
-                      >
-                        Yes, Remove
-                      </button>
-                      <button
-                        className="btn btn-outline btn-sm"
-                        onClick={cancelDelete}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="empty-state">
-          <p>You haven't added any beneficiaries yet.</p>
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowAddForm(true)}
-          >
-            Add Your First Beneficiary
-          </button>
-        </div>
+        )
       )}
     </div>
+  </div>
+</div>
   )
 }
 
