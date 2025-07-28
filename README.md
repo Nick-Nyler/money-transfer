@@ -97,13 +97,13 @@ Seeded automatically on first backend run.
 
 | Email            | Password   | Phone (sandbox) |
 |------------------|------------|------------------|
-| demo@example.com | password   | 0740000000       |
+| john@example.com | password123   | 0740000000       |
 
 **Admin:**
 
 | Email             | Password   |
 |-------------------|------------|
-| admin@example.com | adminpass  |
+| admin@example.com | admin123  |
 
 > ⚠️ You can customize these in `app.py`'s seeding logic.
 

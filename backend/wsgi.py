@@ -1,4 +1,4 @@
-# backend/wsgi.py
+ # backend/wsgi.py
 
 from app import create_app
 from database.db_init import init_db  # your init logic
@@ -10,4 +10,4 @@ app = create_app()
 with app.app_context():
     init_db(app)
 
-# Gunicorn will serve `app`
+# Gunicorn will serve app
