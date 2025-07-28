@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom"
 import {
   fetchBeneficiaries,
   addBeneficiary,
+  updateBeneficiary,
   removeBeneficiary,
 } from "../features/beneficiaries/beneficiariesSlice"
 import LoadingSpinner from "./common/LoadingSpinner"
@@ -19,6 +20,7 @@ const Beneficiaries = () => {
     (state) => state.beneficiaries
   )
 
+  // Add form state
   const [showAddForm, setShowAddForm] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -27,55 +29,80 @@ const Beneficiaries = () => {
     accountNumber: "",
     relationship: "",
   })
+  // Edit form state
+  const [editingId, setEditingId] = useState(null)
+  const [editData, setEditData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    accountNumber: "",
+    relationship: "",
+  })
+
   const [formErrors, setFormErrors] = useState({})
   const [deleteConfirmation, setDeleteConfirmation] = useState(null)
 
   useEffect(() => {
-    if (user) {
-      dispatch(fetchBeneficiaries(user.id))
-    }
+    if (user) dispatch(fetchBeneficiaries(user.id))
   }, [dispatch, user])
 
-  const handleChange = (e) => {
+  const phoneRe = /^\+?\d{10,15}$/
+  const validate = (data) => {
+    const errs = {}
+    if (!data.name.trim()) errs.name = "Name is required"
+    if (!data.phone.trim()) errs.phone = "Phone number is required"
+    else if (!phoneRe.test(data.phone.replace(/\s/g, "")))
+      errs.phone = "Phone number is invalid"
+    if (data.email && !/\S+@\S+\.\S+/.test(data.email))
+      errs.email = "Email is invalid"
+    setFormErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  // Add handlers
+  const handleAddChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: "" }))
-    }
+    setFormData((p) => ({ ...p, [name]: value }))
+    if (formErrors[name]) setFormErrors((p) => ({ ...p, [name]: "" }))
   }
-
-  const validateForm = () => {
-    const errors = {}
-    if (!formData.name.trim()) errors.name = "Name is required"
-    if (!formData.phone.trim()) errors.phone = "Phone number is required"
-    else if (!/^\+?\d{10,15}$/.test(formData.phone.replace(/\s/g, "")))
-      errors.phone = "Phone number is invalid"
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email))
-      errors.email = "Email is invalid"
-
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const handleSubmit = (e) => {
+  const handleAddSubmit = (e) => {
     e.preventDefault()
-    if (!validateForm()) return
-
+    if (!validate(formData)) return
     dispatch(addBeneficiary({ ...formData, userId: user.id }))
       .unwrap()
       .then(() => {
-        setFormData({
-          name: "",
-          phone: "",
-          email: "",
-          accountNumber: "",
-          relationship: "",
-        })
+        setFormData({ name: "", phone: "", email: "", accountNumber: "", relationship: "" })
         setShowAddForm(false)
       })
-      .catch(() => {})
   }
 
+  // Edit handlers
+  const handleEditClick = (b) => {
+    setEditingId(b.id)
+    setEditData({
+      name: b.name,
+      phone: b.phone,
+      email: b.email || "",
+      accountNumber: b.accountNumber || "",
+      relationship: b.relationship || "",
+    })
+    setFormErrors({})
+    setShowAddForm(false)
+  }
+  const handleEditChange = (e) => {
+    const { name, value } = e.target
+    setEditData((p) => ({ ...p, [name]: value }))
+    if (formErrors[name]) setFormErrors((p) => ({ ...p, [name]: "" }))
+  }
+  const handleEditSubmit = (e) => {
+    e.preventDefault()
+    if (!validate(editData)) return
+    dispatch(updateBeneficiary({ id: editingId, ...editData }))
+      .unwrap()
+      .then(() => setEditingId(null))
+  }
+
+  // Delete handlers
   const handleDelete = (id) => setDeleteConfirmation(id)
   const confirmDelete = () => {
     dispatch(removeBeneficiary(deleteConfirmation))
@@ -84,13 +111,12 @@ const Beneficiaries = () => {
   }
   const cancelDelete = () => setDeleteConfirmation(null)
 
+  // Send money
   const handleSendMoney = (b) => {
     navigate(`/send-money?beneficiaryId=${b.id}`)
   }
 
-  if (status === "loading") {
-    return <LoadingSpinner />
-  }
+  if (status === "loading") return <LoadingSpinner />
 
   return (
     <div className="beneficiaries-container">
@@ -98,7 +124,11 @@ const Beneficiaries = () => {
         <h1>Manage Beneficiaries</h1>
         <button
           className="btn btn-primary"
-          onClick={() => setShowAddForm((s) => !s)}
+          onClick={() => {
+            setShowAddForm((s) => !s)
+            setEditingId(null)
+            setFormErrors({})
+          }}
         >
           {showAddForm ? "Cancel" : "Add Beneficiary"}
         </button>
@@ -109,63 +139,56 @@ const Beneficiaries = () => {
       {showAddForm && (
         <div className="add-beneficiary-form">
           <h2>Add New Beneficiary</h2>
-          <form onSubmit={handleSubmit}>
-            {/* Name */}
+          <form onSubmit={handleAddSubmit}>
             <div className="form-group">
-              <label htmlFor="name">Full Name</label>
+              <label>Full Name</label>
               <input
-                id="name"
                 name="name"
                 value={formData.name}
-                onChange={handleChange}
+                onChange={handleAddChange}
                 placeholder="Enter full name"
               />
               {formErrors.name && <span className="error">{formErrors.name}</span>}
             </div>
-            {/* Phone */}
+
             <div className="form-group">
-              <label htmlFor="phone">Phone Number</label>
+              <label>Phone Number</label>
               <input
-                id="phone"
                 name="phone"
                 value={formData.phone}
-                onChange={handleChange}
+                onChange={handleAddChange}
                 placeholder="+254XXXXXXXXX"
               />
               {formErrors.phone && <span className="error">{formErrors.phone}</span>}
             </div>
-            {/* Email */}
+
             <div className="form-group">
-              <label htmlFor="email">Email (Optional)</label>
+              <label>Email (Optional)</label>
               <input
-                id="email"
                 name="email"
-                type="email"
                 value={formData.email}
-                onChange={handleChange}
+                onChange={handleAddChange}
                 placeholder="Enter email address"
               />
               {formErrors.email && <span className="error">{formErrors.email}</span>}
             </div>
-            {/* Account + Relationship */}
+
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="accountNumber">Account Number (Optional)</label>
+                <label>Account Number (Optional)</label>
                 <input
-                  id="accountNumber"
                   name="accountNumber"
                   value={formData.accountNumber}
-                  onChange={handleChange}
+                  onChange={handleAddChange}
                   placeholder="Enter account number"
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="relationship">Relationship (Optional)</label>
+                <label>Relationship (Optional)</label>
                 <select
-                  id="relationship"
                   name="relationship"
                   value={formData.relationship}
-                  onChange={handleChange}
+                  onChange={handleAddChange}
                 >
                   <option value="">Select relationship</option>
                   <option value="Family">Family</option>
@@ -175,25 +198,94 @@ const Beneficiaries = () => {
                 </select>
               </div>
             </div>
+
             <div className="form-actions">
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={status === "loading"}
-              >
-                {status === "loading" ? "Adding..." : "Add Beneficiary"}
+              <button type="submit" className="btn btn-primary">
+                Add Beneficiary
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {beneficiaries.length > 0 ? (
-        <div className="beneficiaries-list-container">
-          <div className="beneficiaries-grid">
-            {beneficiaries.map((b) => (
+      <div className="beneficiaries-list-container">
+        <div className="beneficiaries-grid">
+          {beneficiaries.map((b) =>
+            editingId === b.id ? (
               <div key={b.id} className="beneficiary-card">
-                {/* Header */}
+                <form onSubmit={handleEditSubmit}>
+                  <h3>Edit Beneficiary</h3>
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input
+                      name="name"
+                      value={editData.name}
+                      onChange={handleEditChange}
+                    />
+                    {formErrors.name && <span className="error">{formErrors.name}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <input
+                      name="phone"
+                      value={editData.phone}
+                      onChange={handleEditChange}
+                    />
+                    {formErrors.phone && <span className="error">{formErrors.phone}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Email (Optional)</label>
+                    <input
+                      name="email"
+                      value={editData.email}
+                      onChange={handleEditChange}
+                    />
+                    {formErrors.email && <span className="error">{formErrors.email}</span>}
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Account Number (Optional)</label>
+                      <input
+                        name="accountNumber"
+                        value={editData.accountNumber}
+                        onChange={handleEditChange}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Relationship (Optional)</label>
+                      <select
+                        name="relationship"
+                        value={editData.relationship}
+                        onChange={handleEditChange}
+                      >
+                        <option value="">Select relationship</option>
+                        <option value="Family">Family</option>
+                        <option value="Friend">Friend</option>
+                        <option value="Business">Business</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary btn-sm">
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setEditingId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div key={b.id} className="beneficiary-card">
                 <div className="beneficiary-header">
                   <div className="beneficiary-avatar">
                     {b.name.charAt(0).toUpperCase()}
@@ -203,7 +295,6 @@ const Beneficiaries = () => {
                     <p>{b.phone}</p>
                   </div>
                 </div>
-                {/* Details */}
                 <div className="beneficiary-details">
                   {b.email && (
                     <div className="detail-row">
@@ -224,13 +315,18 @@ const Beneficiaries = () => {
                     </div>
                   )}
                 </div>
-                {/* Actions */}
                 <div className="beneficiary-actions">
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={() => handleSendMoney(b)}
                   >
                     Send Money
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleEditClick(b)}
+                  >
+                    Edit
                   </button>
                   <button
                     className="btn btn-danger btn-sm"
@@ -259,22 +355,14 @@ const Beneficiaries = () => {
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            )
+          )}
         </div>
-      ) : (
-        <div className="empty-state">
-          <p>You haven't added any beneficiaries yet.</p>
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowAddForm(true)}
-          >
-            Add Your First Beneficiary
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
 
 export default Beneficiaries
+
+
