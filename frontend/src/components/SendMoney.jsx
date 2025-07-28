@@ -131,7 +131,7 @@ const SendMoney = () => {
 
   const handleFinish = () => navigate("/dashboard")
 
-  // loading
+  
   if (
     beneficiariesStatus === "loading" ||
     walletStatus === "loading"
