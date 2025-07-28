@@ -45,7 +45,7 @@ def seed_data():
         db.session.add_all([admin_wallet, john_wallet])
         db.session.commit()
 
-        # Demo Beneficiaries for John Doe
+        
         jane_smith = Beneficiary(
             user_id=john_doe.id,
             name="Jane Smith",
