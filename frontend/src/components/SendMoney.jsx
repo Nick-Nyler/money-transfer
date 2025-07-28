@@ -43,7 +43,7 @@ const SendMoney = () => {
     return "+" + digits
   }
 
-  
+  // load beneficiaries + wallet
   useEffect(() => {
     if (user) {
       dispatch(fetchBeneficiaries(user.id))
