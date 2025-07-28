@@ -2,32 +2,50 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { api } from "../../api"
 import { logout } from "../auth/authSlice"
 
-
 // Async thunks
-export const fetchBeneficiaries = createAsyncThunk("beneficiaries/fetchAll", async (userId, { rejectWithValue }) => {
-  try {
-    return await api.getBeneficiaries(userId)
-  } catch (error) {
-    return rejectWithValue(error.message)
+export const fetchBeneficiaries = createAsyncThunk(
+  "beneficiaries/fetchAll",
+  async (userId, { rejectWithValue }) => {
+    try {
+      return await api.getBeneficiaries(userId) // { beneficiaries }
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
   }
-})
+)
 
-export const addBeneficiary = createAsyncThunk("beneficiaries/add", async (beneficiaryData, { rejectWithValue }) => {
-  try {
-    return await api.addBeneficiary(beneficiaryData)
-  } catch (error) {
-    return rejectWithValue(error.message)
+export const addBeneficiary = createAsyncThunk(
+  "beneficiaries/add",
+  async (beneficiaryData, { rejectWithValue }) => {
+    try {
+      return await api.addBeneficiary(beneficiaryData) // { beneficiary }
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
   }
-})
+)
 
-export const removeBeneficiary = createAsyncThunk("beneficiaries/remove", async (id, { rejectWithValue }) => {
-  try {
-    const result = await api.removeBeneficiary(id)
-    return { id, ...result }
-  } catch (error) {
-    return rejectWithValue(error.message)
+export const updateBeneficiary = createAsyncThunk(
+  "beneficiaries/update",
+  async ({ id, ...updateData }, { rejectWithValue }) => {
+    try {
+      return await api.updateBeneficiary(id, updateData) // { beneficiary }
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
   }
-})
+)
+
+export const removeBeneficiary = createAsyncThunk(
+  "beneficiaries/remove",
+  async (id, { rejectWithValue }) => {
+    try {
+      return await api.removeBeneficiary(id) // { id }
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
 
 const initialState = {
   beneficiaries: [],
@@ -45,7 +63,7 @@ const beneficiariesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch beneficiaries
+      // Fetch
       .addCase(fetchBeneficiaries.pending, (state) => {
         state.status = "loading"
         state.error = null
@@ -59,7 +77,7 @@ const beneficiariesSlice = createSlice({
         state.error = action.payload
       })
 
-      // Add beneficiary
+      // Add
       .addCase(addBeneficiary.pending, (state) => {
         state.status = "loading"
         state.error = null
@@ -73,21 +91,40 @@ const beneficiariesSlice = createSlice({
         state.error = action.payload
       })
 
-      // Remove beneficiary
+      // Update
+      .addCase(updateBeneficiary.pending, (state) => {
+        state.status = "loading"
+        state.error = null
+      })
+      .addCase(updateBeneficiary.fulfilled, (state, action) => {
+        state.status = "succeeded"
+        const updated = action.payload.beneficiary
+        state.beneficiaries = state.beneficiaries.map((b) =>
+          b.id === updated.id ? updated : b
+        )
+      })
+      .addCase(updateBeneficiary.rejected, (state, action) => {
+        state.status = "failed"
+        state.error = action.payload
+      })
+
+      // Remove
       .addCase(removeBeneficiary.pending, (state) => {
         state.status = "loading"
         state.error = null
       })
       .addCase(removeBeneficiary.fulfilled, (state, action) => {
         state.status = "succeeded"
-        state.beneficiaries = state.beneficiaries.filter((beneficiary) => beneficiary.id !== action.payload.id)
+        state.beneficiaries = state.beneficiaries.filter(
+          (b) => b.id !== action.payload.id
+        )
       })
       .addCase(removeBeneficiary.rejected, (state, action) => {
         state.status = "failed"
         state.error = action.payload
       })
 
-      // Clear beneficiaries on logout
+      // Clear on logout
       .addCase(logout.fulfilled, (state) => {
         state.beneficiaries = []
         state.status = "idle"
@@ -97,5 +134,4 @@ const beneficiariesSlice = createSlice({
 })
 
 export const { clearError } = beneficiariesSlice.actions
-
 export default beneficiariesSlice.reducer

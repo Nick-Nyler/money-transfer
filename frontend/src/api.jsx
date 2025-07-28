@@ -56,6 +56,17 @@ export const api = {
     return { user };
   },
 
+  updateUserProfile: async (userData) => {
+    const token = localStorage.getItem("authToken");
+    const user = await _callApi("/auth/profile", "PUT", userData, token);
+    return { user };
+  },
+
+  changePassword: async ({ oldPassword, newPassword }) => {
+    const token = localStorage.getItem("authToken");
+    return await _callApi("/auth/profile/password", "PUT", { oldPassword, newPassword }, token);
+  },
+
   // — Wallet —
   getWalletBalance: async () => {
     const token = localStorage.getItem("authToken");
@@ -63,26 +74,18 @@ export const api = {
     return { wallet: response };
   },
 
-  // Now includes phone_number for M-Pesa STK push
+  // Add funds via M-Pesa STK (backend expects amount & phone_number)
   addFunds: async (amount, phone_number) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi(
-      "/wallet/add-funds",
-      "POST",
-      { amount, phone_number },
-      token
-    );
+    const response = await _callApi("/wallet/add-funds", "POST", { amount, phone: phone_number }, token);
     return { wallet: response };
   },
 
-  // Download CSV statement
   downloadStatement: async () => {
     const token = localStorage.getItem("authToken");
     const res = await fetch(`${BASE_URL}/wallet/statement`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
+      headers: { "Authorization": `Bearer ${token}` },
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -107,14 +110,20 @@ export const api = {
 
   addBeneficiary: async (beneficiaryData) => {
     const token = localStorage.getItem("authToken");
-    const response = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
-    return { beneficiary: response };
+    const { beneficiary } = await _callApi("/beneficiaries/", "POST", beneficiaryData, token);
+    return { beneficiary };
+  },
+
+  updateBeneficiary: async (id, updateData) => {
+    const token = localStorage.getItem("authToken");
+    const { beneficiary } = await _callApi(`/beneficiaries/${id}`, "PATCH", updateData, token);
+    return { beneficiary };
   },
 
   removeBeneficiary: async (id) => {
     const token = localStorage.getItem("authToken");
-    await _callApi(`/beneficiaries/${id}`, "DELETE", null, token);
-    return { id };
+    const res = await _callApi(`/beneficiaries/${id}`, "DELETE", null, token);
+    return { id: res.id };
   },
 
   // — Transactions —
@@ -149,18 +158,11 @@ export const api = {
     return await _callApi(`/admin/users/${userId}`, "GET", null, token);
   },
 
-  // — New: Activate/Deactivate User —
   updateUserStatus: async (userId, role) => {
     const token = localStorage.getItem("authToken");
-    return await _callApi(
-      `/admin/users/${userId}/status`,
-      "PATCH",
-      { role },
-      token
-    );
+    return await _callApi(`/admin/users/${userId}/status`, "PATCH", { role }, token);
   },
 
-  // — New: Reverse a transaction —
   reverseTransaction: async (transactionId) => {
     const token = localStorage.getItem("authToken");
     const { transaction } = await _callApi(
@@ -170,21 +172,5 @@ export const api = {
       token
     );
     return { transaction };
-  },
-
-  updateUserProfile: async (userData) => {
-    const token = localStorage.getItem("authToken");
-    const user = await _callApi("/auth/profile", "PUT", userData, token);
-    return { user };
-  },
-
-  changePassword: async ({ oldPassword, newPassword }) => {
-    const token = localStorage.getItem("authToken");
-    return await _callApi(
-      "/auth/profile/password",
-      "PUT",
-      { oldPassword, newPassword },
-      token
-    );
   },
 };
