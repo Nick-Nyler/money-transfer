@@ -64,7 +64,7 @@ def reverse_transaction(transaction_id):
     if tx.type != "send":
         raise ValueError("Only 'send' transactions can be reversed")
 
-    # Normalize phone lookup (strip leading '+')
+
     raw_phone = tx.recipient_phone or ""
     clean_phone = raw_phone.lstrip("+")
     recipient_user = User.query.filter(
