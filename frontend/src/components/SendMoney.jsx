@@ -51,7 +51,7 @@ const SendMoney = () => {
     }
   }, [dispatch, user])
 
-  // auto-select via query param
+  
   useEffect(() => {
     if (preSelectedBeneficiaryId && beneficiaries.length > 0) {
       const found = beneficiaries.find(
