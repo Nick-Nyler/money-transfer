@@ -364,3 +364,5 @@ const Beneficiaries = () => {
 }
 
 export default Beneficiaries
+
+

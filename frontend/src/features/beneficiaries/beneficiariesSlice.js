@@ -135,3 +135,5 @@ const beneficiariesSlice = createSlice({
 
 export const { clearError } = beneficiariesSlice.actions
 export default beneficiariesSlice.reducer
+
+
