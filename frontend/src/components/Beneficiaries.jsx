@@ -113,7 +113,7 @@ const Beneficiaries = () => {
   const cancelDelete = () => setDeleteConfirmation(null)
 
   const handleSendMoney = (b) =>
-    navigate('/send-money?beneficiaryId=${b.id}')
+    navigate(`/send-money?beneficiaryId=${b.id}`)
 
   if (status === "loading") {
     return <LoadingSpinner />
