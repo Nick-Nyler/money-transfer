@@ -64,7 +64,7 @@ const SendMoney = () => {
     }
   }, [preSelectedBeneficiaryId, beneficiaries])
 
-  // validations
+ 
   const validateStep1 = () => {
     const errs = {}
     if (!selectedBeneficiary)
