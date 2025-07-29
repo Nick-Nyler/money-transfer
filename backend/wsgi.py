@@ -1,5 +1,3 @@
- # backend/wsgi.py
-
 from app import create_app
 from database.db_init import init_db  # your init logic
 

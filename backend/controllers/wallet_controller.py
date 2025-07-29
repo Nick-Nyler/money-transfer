@@ -1,5 +1,3 @@
-# backend/controllers/wallet_controller.py
-
 from datetime import datetime
 from extensions import db
 from models.wallet import Wallet
