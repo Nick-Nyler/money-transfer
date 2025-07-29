@@ -1,6 +1,6 @@
-# 💸 MoneyTransfer — Flask + React + Safaricom M‑Pesa STK Push
+#  MoneyTransfer — Flask + React + Safaricom M‑Pesa STK Push
 
-**TL;DR:** Build a fast, secure, low‑fee wallet app that levels up financial inclusion. 🚀  
+**TL;DR:** Build a fast, secure, low‑fee wallet app that levels up financial inclusion.  
 **Backend:** Flask / SQLAlchemy | **Frontend:** React / Redux Toolkit
 **Deployed Link:** [money-transfer-d.onrender.com](https://money-transfer-d.onrender.com)
 ---
