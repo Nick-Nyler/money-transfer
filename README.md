@@ -2,16 +2,17 @@
 
 **TL;DR:** Build a fast, secure, low‑fee wallet app that levels up financial inclusion. 🚀  
 **Backend:** Flask / SQLAlchemy | **Frontend:** React / Redux Toolkit
-
+**Deployed Link:** [money-transfer-d.onrender.com](https://money-transfer-d.onrender.com)
 ---
 
-## 🧩 Project Overview
+
+##  Project Overview
 
 Money transfers should be painless and cheap. We’re tackling high fees, clunky onboarding, and bank‑only gatekeeping so everyone, everywhere, can send cash without headache or hefty charges.
 
 ---
 
-## 🚧 Key Challenges
+##  Key Challenges
 
 1. **High transaction fees** – Keep fees under 1% (min \$0.50) to stay wallet‑friendly.
 2. **Onboarding friction** – Streamline sign‑ups: basic info + KYC only when needed.
@@ -21,7 +22,7 @@ Money transfers should be painless and cheap. We’re tackling high fees, clunky
 
 ---
 
-## 🎯 MVP Features
+##  MVP Features
 
 ### For Users
 
@@ -40,7 +41,7 @@ Money transfers should be painless and cheap. We’re tackling high fees, clunky
 
 ---
 
-## 🧰 Requirements
+##  Requirements
 
 - Python 3.10+
 - Node 18+
@@ -89,7 +90,7 @@ Money-Transfer-App/
 
 ---
 
-## 🔑 Demo / Test Accounts
+##  Demo / Test Accounts
 
 Seeded automatically on first backend run.
 
@@ -105,7 +106,7 @@ Seeded automatically on first backend run.
 |-------------------|------------|
 | admin@example.com | admin123  |
 
-> ⚠️ You can customize these in `app.py`'s seeding logic.
+>  You can customize these in `app.py`'s seeding logic.
 
 Example:
 ```python
@@ -125,7 +126,7 @@ john_doe = User(
     phone="+254723456789",
     role="user"
 )
-🚀 Setup
+Setup
 1. Clone the repo
 git clone https://github.com/YourOrg/Money-Transfer-App.git
 cd Money-Transfer-App
@@ -183,12 +184,12 @@ Frontend polls /api/wallet/tx-status/<CheckoutRequestID> for result
 
  Key API Endpoints
 Method	URL	Auth	Description
-POST	/api/auth/login	                   ❌	Get JWT
-GET	/api/wallet/balance	                ✅	Wallet info
-POST	/api/wallet/add-funds	             ✅	Initiate M‑Pesa STK Push
-POST	/api/wallet/mpesa/callback	          ❌	M‑Pesa Daraja callback
-GET	/api/wallet/tx-status/:checkout_id	 ✅	Poll transaction status
-GET	/api/wallet/statement	             ✅	Export CSV of transactions
+POST	/api/auth/login	                   	Get JWT
+GET	/api/wallet/balance	                	Wallet info
+POST	/api/wallet/add-funds	             	Initiate M‑Pesa STK Push
+POST	/api/wallet/mpesa/callback	          	M‑Pesa Daraja callback
+GET	/api/wallet/tx-status/:checkout_id	 	Poll transaction status
+GET	/api/wallet/statement	             	Export CSV of transactions
 
  Testing
 Backend: python -m unittest or pytest from /backend/tests/

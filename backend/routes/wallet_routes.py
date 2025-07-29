@@ -1,5 +1,3 @@
-# backend/routes/wallet_routes.py
-
 from flask import Blueprint, request, jsonify, g, make_response
 from routes.auth_routes import login_required
 from controllers.wallet_controller import (

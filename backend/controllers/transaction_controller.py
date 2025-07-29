@@ -1,5 +1,3 @@
-# backend/controllers/transaction_controller.py
-
 import re
 import datetime
 from extensions import db

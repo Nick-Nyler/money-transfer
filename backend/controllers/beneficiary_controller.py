@@ -1,5 +1,3 @@
-# backend/controllers/beneficiaries_controller.py
-
 import datetime
 from models.beneficiary import Beneficiary
 from schemas.beneficiary_schema import beneficiary_schema, beneficiaries_schema
