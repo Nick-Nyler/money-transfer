@@ -1,14 +1,16 @@
+# backend/models/user.py
+
 from extensions import db
 import datetime
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)  # bumped from 128 to 255
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     phone = db.Column(db.String(20), unique=True, nullable=False)
-    role = db.Column(db.String(20), default='user', nullable=False) # 'user' or 'admin'
+    role = db.Column(db.String(20), default='user', nullable=False)  # 'user' or 'admin'
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     wallets = db.relationship('Wallet', backref='user', lazy=True, uselist=False)
