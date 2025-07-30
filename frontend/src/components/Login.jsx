@@ -1,93 +1,25 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
-import { clearError, checkAuth } from "../features/auth/authSlice";
-import { toast } from "react-toastify";
+import { useState, useEffect } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { Link } from "react-router-dom"
+import { login, clearError } from "../features/auth/authSlice"
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [showOtp, setShowOtp] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  const { isAuthenticated, error } = useSelector((state) => state.auth);
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const dispatch = useDispatch()
+  const { status, error } = useSelector((state) => state.auth)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/dashboard");
-    }
-  }, [isAuthenticated, navigate]);
+    dispatch(clearError())
+  }, [dispatch])
 
-  useEffect(() => {
-    dispatch(clearError());
-  }, [dispatch]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (!showOtp) {
-      try {
-        const res = await fetch("http://localhost:5000/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          if (data.otp_required === false) {
-            // Admin login
-            localStorage.setItem("authToken", data.token);
-            toast.success("Login successful");
-            await dispatch(checkAuth());
-          } else {
-            // Non-admin → Proceed to OTP
-            toast.info("OTP sent to your email");
-            setShowOtp(true);
-          }
-        } else {
-          toast.error(data.error || "Invalid credentials");
-        }
-      } catch (err) {
-        console.error("Login request failed:", err);
-        toast.error("Network error. Is your backend running?");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Submit OTP
-      try {
-        const res = await fetch("http://localhost:5000/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          localStorage.setItem("authToken", data.token);
-          toast.success("Login successful");
-          await dispatch(checkAuth());
-        } else {
-          toast.error(data.error || "OTP verification failed");
-        }
-      } catch (err) {
-        console.error("OTP verification failed:", err);
-        toast.error("Network error during OTP verification");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    dispatch(login({ email, password }))
+  }
 
   return (
     <div className="auth-container">
@@ -100,59 +32,35 @@ const Login = () => {
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {!showOtp ? (
-            <>
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
 
-              <div className="form-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </>
-          ) : (
-            <div className="form-group">
-              <label>Enter OTP</label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-              />
-            </div>
-          )}
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-          <button type="submit" className="btn btn-primary btn-block">
-            {loading
-              ? "Signing in..."
-              : showOtp
-              ? "Verify OTP"
-              : "Sign In"}
+          <button type="submit" className="btn btn-primary btn-block" disabled={status === "loading"}>
+            {status === "loading" ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {!showOtp && (
-          <div className="auth-links">
-            <p>
-              Don't have an account? <Link to="/register">Sign up</Link>
-            </p>
-          </div>
-        )}
+        <div className="auth-links">
+          <p>
+            Don't have an account? <Link to="/register">Sign up</Link>
+          </p>
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Login;
+export default Login

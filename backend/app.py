@@ -14,10 +14,10 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ————— Enable CORS for all routes —————
+    # ————— Enable CORS on all /api/* routes for our React frontend —————
     CORS(
         app,
-        resources={r"/*": {
+        resources={r"/api/*": {
             "origins": [
                 "http://localhost:5173",
                 "https://money-transfer-d.onrender.com"
@@ -25,8 +25,7 @@ def create_app():
         }},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
-        expose_headers=["Authorization"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+        expose_headers=["Authorization"]
     )
 
     # Initialize extensions
@@ -57,3 +56,5 @@ if __name__ == "__main__":
     # Run server
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, port=port)
+
+
