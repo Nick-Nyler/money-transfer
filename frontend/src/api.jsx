@@ -1,12 +1,10 @@
 // src/api.js
 // API service for data operations, now interacting with the Flask backend
 
-// Reads VITE_API_URL from .env; falls back to localhost
 const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : "http://localhost:5000/api";
 
-// Helper to make API calls
 const _callApi = async (endpoint, method = "GET", data = null, token = null) => {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -31,7 +29,19 @@ const _callApi = async (endpoint, method = "GET", data = null, token = null) => 
 export const api = {
   // — Auth —
   login: async (email, password) => {
-    const { token, user } = await _callApi("/auth/login", "POST", { email, password });
+    const response = await _callApi("/auth/login", "POST", { email, password });
+
+    if (response.status === "otp_required") {
+      return { otpRequired: true };
+    }
+
+    const { token, user } = response;
+    localStorage.setItem("authToken", token);
+    return { user };
+  },
+
+  verifyOtpLogin: async (email, otp) => {
+    const { token, user } = await _callApi("/auth/verify-otp", "POST", { email, otp });
     localStorage.setItem("authToken", token);
     return { user };
   },
@@ -74,7 +84,6 @@ export const api = {
     return { wallet: response };
   },
 
-  // Add funds via M-Pesa STK (backend expects amount & phone_number)
   addFunds: async (amount, phone_number) => {
     const token = localStorage.getItem("authToken");
     const response = await _callApi("/wallet/add-funds", "POST", { amount, phone: phone_number }, token);

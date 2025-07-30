@@ -3,12 +3,36 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../api";
 
-// — LOGIN
+// — LOGIN (standard + handles admin OTP skip on frontend)
 export const login = createAsyncThunk(
   "auth/login",
   async ({ email, password }, { rejectWithValue }) => {
     try {
       return await api.login(email, password);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+// — OTP STEP 2: verify OTP
+export const verifyOtp = createAsyncThunk(
+  "auth/verifyOtp",
+  async ({ email, otp }, { rejectWithValue }) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Invalid OTP");
+
+      // ✅ FIXED: Store token as authToken
+      localStorage.setItem("authToken", data.token);
+
+      return { user: data.user };
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -32,7 +56,7 @@ export const logout = createAsyncThunk("auth/logout", async () => {
   return await api.logout();
 });
 
-// — CHECK AUTH (on app load)
+// — CHECK AUTH
 export const checkAuth = createAsyncThunk(
   "auth/checkAuth",
   async (_, { rejectWithValue }) => {
@@ -45,7 +69,7 @@ export const checkAuth = createAsyncThunk(
   }
 );
 
-// — UPDATE PROFILE (no userId needed—API reads token)
+// — UPDATE PROFILE
 export const updateProfile = createAsyncThunk(
   "auth/updateProfile",
   async (userData, { rejectWithValue }) => {
@@ -57,12 +81,11 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
-// — CHANGE PASSWORD (just old/new)
+// — CHANGE PASSWORD
 export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async ({ oldPassword, newPassword }, { rejectWithValue }) => {
     try {
-      // 🔥 Pass a single object to match api.changePassword signature
       const res = await api.changePassword({ oldPassword, newPassword });
       if (res.error) throw new Error(res.error);
       return res.message || "Password changed successfully";
@@ -77,7 +100,8 @@ const initialState = {
   isAuthenticated: false,
   status: "idle",
   error: null,
-  success: null, // track success messages
+  success: null,
+  otpSent: false,
 };
 
 const authSlice = createSlice({
@@ -91,7 +115,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // login
+      // — LOGIN
       .addCase(login.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -107,7 +131,26 @@ const authSlice = createSlice({
         state.error = payload;
       })
 
-      // register
+      // — VERIFY OTP
+      .addCase(verifyOtp.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.success = null;
+      })
+      .addCase(verifyOtp.fulfilled, (state, { payload }) => {
+        state.status = "succeeded";
+        state.user = payload.user;
+        state.isAuthenticated = true;
+        state.otpSent = false;
+        state.success = "Login successful";
+      })
+      .addCase(verifyOtp.rejected, (state, { payload }) => {
+        state.status = "failed";
+        state.error = payload;
+        state.isAuthenticated = false;
+      })
+
+      // — REGISTER
       .addCase(register.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -123,16 +166,17 @@ const authSlice = createSlice({
         state.error = payload;
       })
 
-      // logout
+      // — LOGOUT
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.isAuthenticated = false;
         state.status = "idle";
         state.error = null;
         state.success = null;
+        state.otpSent = false;
       })
 
-      // checkAuth
+      // — CHECK AUTH
       .addCase(checkAuth.pending, (state) => {
         state.status = "loading";
       })
@@ -150,7 +194,7 @@ const authSlice = createSlice({
         state.error = payload;
       })
 
-      // updateProfile
+      // — UPDATE PROFILE
       .addCase(updateProfile.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -165,7 +209,7 @@ const authSlice = createSlice({
         state.error = payload;
       })
 
-      // changePassword
+      // — CHANGE PASSWORD
       .addCase(changePassword.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -173,7 +217,7 @@ const authSlice = createSlice({
       })
       .addCase(changePassword.fulfilled, (state, { payload }) => {
         state.status = "succeeded";
-        state.success = payload;  // backend message
+        state.success = payload;
       })
       .addCase(changePassword.rejected, (state, { payload }) => {
         state.status = "failed";
