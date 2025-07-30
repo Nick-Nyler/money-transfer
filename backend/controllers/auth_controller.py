@@ -6,6 +6,7 @@ from schemas.wallet_schema import wallet_schema
 from schemas.transaction_schema import transactions_schema
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import abort, make_response
 import datetime
 
 def register_user(data):
@@ -36,10 +37,15 @@ def register_user(data):
 
     return user_schema.dump(new_user)
 
+def get_user_by_email(email):
+    user = User.query.filter_by(email=email).first()
+    return user
+
 def login_user(email, password):
     user = User.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
-        raise ValueError("Invalid email or password")
+        response = make_response({"error": "Invalid email or password"}, 401)
+        abort(response)
     return user_schema.dump(user)
 
 def get_current_user_profile(user_id):
